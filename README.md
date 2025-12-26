@@ -50,6 +50,31 @@ Application Flutter mobile pour rejoindre des activités locales.
 
 ### Configuration Firebase
 
+⚠️ **NOUVEAUX DÉVELOPPEURS** : Consultez d'abord [SETUP_POUR_NOUVEAUX_DEVELOPPEURS.md](SETUP_POUR_NOUVEAUX_DEVELOPPEURS.md)
+
+#### Configuration rapide (après clonage)
+
+**1. Script automatique (RECOMMANDÉ) :**
+```bash
+# Windows PowerShell
+.\setup.ps1
+
+# macOS/Linux
+chmod +x setup.sh
+./setup.sh
+```
+
+**2. Obtenir les fichiers Firebase :**
+- Demander `google-services.json` au chef de projet
+- Le placer dans `android/app/`
+
+**3. Lancer l'app :**
+```bash
+flutter run
+```
+
+#### Configuration complète Firebase CLI (optionnel)
+
 ```bash
 # 1. Installer Firebase CLI
 npm install -g firebase-tools

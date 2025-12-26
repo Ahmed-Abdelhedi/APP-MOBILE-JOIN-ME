@@ -28,9 +28,9 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
     
-    // ============================================
+    
     // RÈGLES POUR LES ACTIVITÉS
-    // ============================================
+    //aaaaa
     match /activities/{activityId} {
       // Lecture : tout utilisateur connecté peut voir les activités
       allow read: if request.auth != null;
