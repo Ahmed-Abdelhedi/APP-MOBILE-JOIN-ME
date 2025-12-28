@@ -12,6 +12,7 @@ class ActivityModel {
   final int currentParticipants;
   final double? cost;
   final String? imageUrl;
+  final String? imageAssetPath; // For predefined images
   final String creatorId;
   final String creatorName;
   final List<String> participants;
@@ -31,6 +32,7 @@ class ActivityModel {
     required this.currentParticipants,
     this.cost,
     this.imageUrl,
+    this.imageAssetPath,
     required this.creatorId,
     required this.creatorName,
     required this.participants,
@@ -65,6 +67,7 @@ class ActivityModel {
       currentParticipants: data['currentParticipants'] ?? 0,
       cost: data['cost']?.toDouble(),
       imageUrl: data['imageUrl'],
+      imageAssetPath: data['imageAssetPath'],
       creatorId: data['creatorId'] ?? '',
       creatorName: data['creatorName'] ?? '',
       participants: List<String>.from(data['participants'] ?? []),
@@ -87,6 +90,7 @@ class ActivityModel {
       'maxParticipants': maxParticipants,
       'currentParticipants': currentParticipants,
       'cost': cost,
+      'imageAssetPath': imageAssetPath,
       'imageUrl': imageUrl,
       'creatorId': creatorId,
       'creatorName': creatorName,

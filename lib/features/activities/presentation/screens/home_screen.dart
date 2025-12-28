@@ -5,7 +5,6 @@ import 'package:mobile/core/widgets/translated_bottom_nav.dart';
 import 'package:mobile/core/services/activity_service.dart';
 import 'package:mobile/core/providers/firebase_providers.dart';
 import 'package:mobile/core/models/activity_model.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'activity_details_screen.dart';
 import 'create_activity_screen.dart';
@@ -14,6 +13,7 @@ import '../../../chat/presentation/screens/chat_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../profile/presentation/screens/notifications_screen.dart';
 import '../../../profile/presentation/screens/payment_methods_screen.dart';
+import '../widgets/activity_image_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -584,31 +584,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   Hero(
                     tag: 'activity_${activity.title}',
-                    child: CachedNetworkImage(
-                      imageUrl: activity.imageUrl ?? '',
+                    child: ActivityImageWidget(
+                      activity: activity,
                       height: 150,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        height: 150,
-                        color: AppColors.primary.withOpacity(0.1),
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        height: 150,
-                        color: AppColors.primary.withOpacity(0.1),
-                        child: Center(
-                          child: Icon(
-                            Icons.image_not_supported,
-                            size: 64,
-                            color: AppColors.primary.withOpacity(0.5),
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                   // Gradient Overlay

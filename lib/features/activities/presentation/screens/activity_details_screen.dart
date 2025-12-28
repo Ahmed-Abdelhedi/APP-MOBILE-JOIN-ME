@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/core/constants/app_colors.dart';
 import 'package:mobile/core/services/activity_service.dart';
-import 'package:mobile/core/providers/firebase_providers.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:mobile/core/models/activity_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../chat/presentation/screens/chat_screen.dart';
+import '../widgets/activity_image_widget.dart';
 
 class ActivityDetailsScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> activity;
@@ -54,36 +54,12 @@ class _ActivityDetailsScreenState extends ConsumerState<ActivityDetailsScreen> {
                 children: [
                   Hero(
                     tag: 'activity_${activity['title']}',
-                    child: CachedNetworkImage(
-                      imageUrl: activity['imageUrl'] ?? '',
+                    child: ActivityImageWidget(
+                      imageUrl: activity['imageUrl'] as String?,
+                      imageAssetPath: activity['imageAssetPath'] as String?,
+                      width: double.infinity,
+                      height: 300,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: AppColors.primary.withOpacity(0.1),
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              AppColors.primary,
-                              AppColors.secondary,
-                            ],
-                          ),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.image_not_supported,
-                            size: 80,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                   // Gradient Overlay

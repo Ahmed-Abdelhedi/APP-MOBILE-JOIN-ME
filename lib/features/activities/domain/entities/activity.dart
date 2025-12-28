@@ -34,6 +34,7 @@ class Activity extends Equatable {
   final int currentParticipants;
   final double? cost;
   final String? imageUrl;
+  final String? imageAssetPath; // For predefined images
   final String creatorId;
   final List<String> participants;
   final DateTime createdAt;
@@ -52,6 +53,7 @@ class Activity extends Equatable {
     required this.currentParticipants,
     this.cost,
     this.imageUrl,
+    this.imageAssetPath,
     required this.creatorId,
     required this.participants,
     required this.createdAt,
@@ -75,6 +77,7 @@ class Activity extends Equatable {
     int? currentParticipants,
     double? cost,
     String? imageUrl,
+    String? imageAssetPath,
     String? creatorId,
     List<String>? participants,
     DateTime? createdAt,
@@ -92,6 +95,7 @@ class Activity extends Equatable {
       maxParticipants: maxParticipants ?? this.maxParticipants,
       currentParticipants: currentParticipants ?? this.currentParticipants,
       cost: cost ?? this.cost,
+      imageAssetPath: imageAssetPath ?? this.imageAssetPath,
       imageUrl: imageUrl ?? this.imageUrl,
       creatorId: creatorId ?? this.creatorId,
       participants: participants ?? this.participants,
@@ -113,6 +117,7 @@ class Activity extends Equatable {
         maxParticipants,
         currentParticipants,
         cost,
+        imageAssetPath,
         imageUrl,
         creatorId,
         participants,

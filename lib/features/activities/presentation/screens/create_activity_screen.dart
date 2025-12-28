@@ -4,7 +4,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:mobile/core/constants/app_colors.dart';
 import 'package:mobile/core/models/activity_model.dart';
 import 'package:mobile/core/providers/firebase_providers.dart';
+import 'package:mobile/core/services/activity_service.dart';
 import 'package:mobile/features/activities/presentation/screens/location_picker_screen.dart';
+import 'package:mobile/features/activities/presentation/widgets/event_image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -24,6 +26,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
   final _priceController = TextEditingController();
   
   LatLng? _selectedCoordinates; // Stocker les coordonnées GPS du lieu
+  ImageSelectionResult? _selectedImage; // Stocker l'image sélectionnée
   
   String _selectedCategory = 'Sports';
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
@@ -56,7 +59,12 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _buildImagePicker(),
+            EventImagePicker(
+              initialImage: _selectedImage,
+              onImageSelected: (result) {
+                setState(() => _selectedImage = result);
+              },
+            ),
             const SizedBox(height: 24),
             _buildTextField(
               controller: _titleController,
@@ -127,34 +135,6 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildImagePicker() {
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.add_photo_alternate,
-            size: 48,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Ajouter une photo',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 16,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -422,6 +402,22 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
 
       // Créer l'activité dans Firestore
       final firestore = ref.read(firestoreProvider);
+      
+      // Prepare image data
+      String? imageUrl;
+      String? imageAssetPath;
+      
+      // Handle image based on selection type
+      if (_selectedImage != null && _selectedImage!.hasImage) {
+        if (_selectedImage!.isAsset) {
+          // Use predefined asset path
+          imageAssetPath = _selectedImage!.assetPath;
+        } else if (_selectedImage!.needsUpload && _selectedImage!.imageFile != null) {
+          // Upload gallery image first (we'll update after getting the activity ID)
+          // For now, mark it as pending upload
+        }
+      }
+      
       final activityData = {
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
@@ -435,7 +431,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
         'cost': _priceController.text.isEmpty 
             ? null 
             : double.tryParse(_priceController.text),
-        'imageUrl': null, // Peut être ajouté plus tard
+        'imageUrl': imageUrl, // Will be updated after upload if needed
+        'imageAssetPath': imageAssetPath, // Store asset path for predefined images
         'creatorId': currentUser.uid,
         'creatorName': currentUser.displayName ?? currentUser.email ?? 'Utilisateur',
         'participants': [currentUser.uid], // Le créateur est automatiquement participant
@@ -445,6 +442,32 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
 
       final activityDocRef = await firestore.collection('activities').add(activityData);
       final newActivityId = activityDocRef.id;
+
+      // Upload gallery image to Firebase Storage if needed
+      if (_selectedImage != null && _selectedImage!.needsUpload && _selectedImage!.imageFile != null) {
+        try {
+          final activityService = ref.read(activityServiceProvider);
+          final uploadedImageUrl = await activityService.uploadActivityImage(
+            _selectedImage!.imageFile!,
+            newActivityId,
+          );
+          
+          // Update activity with uploaded image URL
+          await activityService.updateActivityImage(newActivityId, uploadedImageUrl);
+          print('✅ Image uploaded and activity updated with URL: $uploadedImageUrl');
+        } catch (uploadError) {
+          print('❌ Error uploading image: $uploadError');
+          // Don't block activity creation if image upload fails
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('⚠️ Image non téléchargée: ${uploadError.toString()}'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      }
 
       // Fermer le loading
       if (mounted) Navigator.of(context).pop();
