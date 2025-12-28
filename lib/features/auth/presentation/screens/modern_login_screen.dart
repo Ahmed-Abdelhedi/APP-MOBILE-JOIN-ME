@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/core/constants/app_colors.dart';
-import 'package:mobile/core/providers/firebase_providers.dart';
+import 'package:mobile/features/auth/presentation/providers/auth_providers.dart';
 import '../../../activities/presentation/screens/home_screen.dart';
 
 class ModernLoginScreen extends ConsumerStatefulWidget {
@@ -49,47 +49,83 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
     }
 
     setState(() => _isLoading = true);
-    print('🔄 Début ${_isLogin ? "Sign In" : "Sign Up"}');
-
-    final authService = ref.read(authServiceProvider);
 
     try {
-      final result = _isLogin
-          ? await authService.signInWithEmail(
+      final authController = ref.read(authControllerProvider.notifier);
+      final success = _isLogin
+          ? await authController.signInWithEmailAndPassword(
               email: email,
               password: password,
             )
-          : await authService.signUpWithEmail(
+          : await authController.signUpWithEmailAndPassword(
               email: email,
               password: password,
               name: name,
             );
 
-      print('📥 Résultat reçu: ${result.isSuccess}');
+      if (!mounted) return;
 
-      if (!mounted) {
-        print('⚠️ Widget non monté');
-        return;
-      }
-
-      if (result.isSuccess) {
-        print('✅ Succès - Navigation vers Home');
-        // Succès - navigation vers home
+      if (success) {
+        _showSuccess(_isLogin ? 'Connexion réussie!' : 'Compte créé avec succès!');
+        
+        // Attendre un peu pour que l'utilisateur voie le message
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        if (!mounted) return;
+        
+        // Navigation vers home
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => const HomeScreen(),
           ),
         );
       } else {
-        print('❌ Échec: ${result.error}');
-        // Erreur
-        _showError(result.error ?? 'Erreur inconnue');
-        setState(() => _isLoading = false);
+        final errorMessage = authController.errorMessage ?? 'Erreur inconnue';
+        _showError(errorMessage);
       }
     } catch (e) {
-      print('❌ Exception: $e');
       if (mounted) {
         _showError('Erreur: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // Nouvelle méthode pour Google Sign-In
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final authController = ref.read(authControllerProvider.notifier);
+      final success = await authController.signInWithGoogle();
+
+      if (!mounted) return;
+
+      if (success) {
+        _showSuccess('Connexion réussie avec Google!');
+        
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        if (!mounted) return;
+        
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
+          ),
+        );
+      } else {
+        final errorMessage = authController.errorMessage ?? 'Échec de la connexion avec Google';
+        _showError(errorMessage);
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError('Erreur: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
         setState(() => _isLoading = false);
       }
     }
@@ -395,7 +431,7 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
 
                       const SizedBox(height: 24),
 
-                      // Google Sign In (Mode démo)
+                      // Google Sign In - Authentification réelle
                       Container(
                         width: double.infinity,
                         height: 56,
@@ -408,20 +444,7 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
                           ),
                         ),
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            // Mode démo - connexion directe
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Mode démo - Connexion rapide'),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (context) => const HomeScreen(),
-                              ),
-                            );
-                          },
+                          onPressed: _isLoading ? null : _handleGoogleSignIn,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             shadowColor: Colors.transparent,
