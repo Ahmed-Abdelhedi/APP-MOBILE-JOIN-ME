@@ -20,6 +20,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   
   final List<Map<String, dynamic>> _paymentMethods = [
     {
+      'id': 'visa_4532',
       'type': 'card',
       'icon': Icons.credit_card,
       'name': 'Visa',
@@ -28,6 +29,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       'isDefault': true,
     },
     {
+      'id': 'mastercard_8790',
       'type': 'card',
       'icon': Icons.credit_card,
       'name': 'Mastercard',
@@ -578,6 +580,10 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   }
 
   void _addPaymentMethod() {
+    final cardNumberController = TextEditingController();
+    final expiryController = TextEditingController();
+    final cvvController = TextEditingController();
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -587,34 +593,43 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
+                controller: cardNumberController,
                 decoration: const InputDecoration(
                   labelText: 'Numéro de carte',
                   hintText: '1234 5678 9012 3456',
                   prefixIcon: Icon(Icons.credit_card),
+                  border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
+                maxLength: 19,
               ),
               const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
                     child: TextField(
+                      controller: expiryController,
                       decoration: const InputDecoration(
                         labelText: 'Expiration',
                         hintText: 'MM/AA',
+                        border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.number,
+                      maxLength: 5,
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextField(
+                      controller: cvvController,
                       decoration: const InputDecoration(
                         labelText: 'CVV',
                         hintText: '123',
+                        border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.number,
                       obscureText: true,
+                      maxLength: 3,
                     ),
                   ),
                 ],
@@ -629,14 +644,51 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           ),
           ElevatedButton(
             onPressed: () {
+              if (cardNumberController.text.isEmpty || 
+                  expiryController.text.isEmpty || 
+                  cvvController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Veuillez remplir tous les champs'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+              
+              setState(() {
+                final lastFour = cardNumberController.text.replaceAll(' ', '').substring(
+                  cardNumberController.text.replaceAll(' ', '').length - 4
+                );
+                _paymentMethods.add({
+                  'id': 'card_$lastFour',
+                  'type': 'card',
+                  'icon': Icons.credit_card,
+                  'name': 'Carte',
+                  'number': '**** **** **** $lastFour',
+                  'expiry': expiryController.text,
+                  'isDefault': false,
+                });
+              });
+              
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Carte ajoutée avec succès'),
+                  content: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text('Carte ajoutée avec succès'),
+                    ],
+                  ),
                   backgroundColor: Colors.green,
                 ),
               );
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Ajouter'),
           ),
         ],
@@ -645,24 +697,108 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   }
 
   void _setAsDefault(Map<String, dynamic> method) {
+    if (method['isDefault']) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cette carte est déjà la méthode par défaut'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
     setState(() {
       for (var m in _paymentMethods) {
         m['isDefault'] = false;
       }
       method['isDefault'] = true;
     });
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${method['name']} définie par défaut'),
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Text('${method['name']} ${method['number']} définie par défaut'),
+          ],
+        ),
         backgroundColor: Colors.green,
       ),
     );
   }
 
   void _editPaymentMethod(Map<String, dynamic> method) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Fonctionnalité de modification à venir'),
+    final expiryController = TextEditingController(text: method['expiry']);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Modifier la carte'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(method['icon'], color: AppColors.primary),
+              title: Text(method['name']),
+              subtitle: Text(method['number']),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: expiryController,
+              decoration: const InputDecoration(
+                labelText: 'Nouvelle date d\'expiration',
+                hintText: 'MM/AA',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.calendar_today),
+              ),
+              keyboardType: TextInputType.number,
+              maxLength: 5,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (expiryController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Veuillez entrer une date d\'expiration'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+              
+              setState(() {
+                method['expiry'] = expiryController.text;
+              });
+              
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text('Carte modifiée avec succès'),
+                    ],
+                  ),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Modifier'),
+          ),
+        ],
       ),
     );
   }
@@ -671,16 +807,81 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer la carte'),
-        content: Text(
-          'Voulez-vous vraiment supprimer ${method['name']} ${method['number']} ?',
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 8),
+            Text('Supprimer la carte'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Voulez-vous vraiment supprimer cette carte ?',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(method['icon'], color: AppColors.primary),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        method['name'],
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        method['number'],
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (method['isDefault']) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.orange[700], size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Cette carte est votre méthode par défaut',
+                        style: TextStyle(
+                          color: Colors.orange[900],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Annuler'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               setState(() {
                 _paymentMethods.remove(method);
@@ -688,15 +889,22 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Carte supprimée'),
+                  content: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text('Carte supprimée avec succès'),
+                    ],
+                  ),
                   backgroundColor: Colors.green,
                 ),
               );
             },
-            child: const Text(
-              'Supprimer',
-              style: TextStyle(color: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
             ),
+            child: const Text('Supprimer'),
           ),
         ],
       ),

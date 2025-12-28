@@ -5,6 +5,7 @@ import 'package:mobile/core/services/activity_service.dart';
 import 'package:mobile/core/models/activity_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../chat/presentation/screens/chat_screen.dart';
+import '../../../profile/presentation/screens/payment_methods_screen.dart';
 import '../widgets/activity_image_widget.dart';
 
 class ActivityDetailsScreen extends ConsumerStatefulWidget {
@@ -170,7 +171,7 @@ class _ActivityDetailsScreenState extends ConsumerState<ActivityDetailsScreen> {
                         child: _buildInfoCard(
                           Icons.people,
                           'Participants',
-                          '${activity['participants']}/${activity['maxParticipants']}',
+                          '${activity['currentParticipants'] ?? activity['participants'] ?? 0}/${activity['maxParticipants']}',
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -178,7 +179,9 @@ class _ActivityDetailsScreenState extends ConsumerState<ActivityDetailsScreen> {
                         child: _buildInfoCard(
                           Icons.euro,
                           'Prix',
-                          activity['price'],
+                          (activity['cost'] != null && activity['cost'] > 0) 
+                              ? '${activity['cost'].toStringAsFixed(2)}€'
+                              : 'Gratuit',
                         ),
                       ),
                     ],
@@ -290,6 +293,97 @@ class _ActivityDetailsScreenState extends ConsumerState<ActivityDetailsScreen> {
                       onPressed: isFull && !isJoined
                           ? null
                           : () async {
+                              // Check if payment is required
+                              final cost = activity['cost'];
+                              final hasCost = cost != null && cost > 0;
+                              
+                              if (hasCost && !isJoined) {
+                                // Show payment confirmation dialog
+                                final shouldProceed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Row(
+                                      children: [
+                                        Icon(Icons.payment, color: AppColors.primary),
+                                        const SizedBox(width: 8),
+                                        const Text('Paiement requis'),
+                                      ],
+                                    ),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Cette activité nécessite un paiement:',
+                                          style: TextStyle(fontWeight: FontWeight.w500),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Container(
+                                          padding: const EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                activity['title'] ?? 'Activité',
+                                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                              ),
+                                              Text(
+                                                '${cost.toStringAsFixed(2)}€',
+                                                style: TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        const Text(
+                                          'Souhaitez-vous procéder au paiement?',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.of(context).pop(false),
+                                        child: const Text('Annuler'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.of(context).pop(true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.primary,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        child: const Text('Continuer'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                
+                                if (shouldProceed != true) return;
+                                
+                                // Navigate to payment screen
+                                if (mounted) {
+                                  final paymentSuccess = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => PaymentMethodsScreen(
+                                        paymentAmount: cost.toDouble(),
+                                        activityTitle: activity['title'],
+                                      ),
+                                    ),
+                                  );
+                                  
+                                  if (paymentSuccess != true) return;
+                                }
+                              }
+                              
                               try {
                                 final activityService = ref.read(activityServiceProvider);
                                 if (isJoined) {
@@ -301,10 +395,19 @@ class _ActivityDetailsScreenState extends ConsumerState<ActivityDetailsScreen> {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(
-                                        isJoined
-                                            ? 'Vous avez quitté l\'activité'
-                                            : 'Vous avez rejoint l\'activité !',
+                                      content: Row(
+                                        children: [
+                                          Icon(
+                                            isJoined ? Icons.exit_to_app : Icons.check_circle,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            isJoined
+                                                ? 'Vous avez quitté l\'activité'
+                                                : 'Vous avez rejoint l\'activité !',
+                                          ),
+                                        ],
                                       ),
                                       backgroundColor: isJoined
                                           ? Colors.orange
@@ -331,16 +434,33 @@ class _ActivityDetailsScreenState extends ConsumerState<ActivityDetailsScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: Text(
-                        isJoined
-                            ? 'Quitter l\'activité'
-                            : isFull
-                                ? 'Complet'
-                                : 'Rejoindre l\'activité',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isJoined
+                                ? Icons.exit_to_app
+                                : isFull
+                                    ? Icons.block
+                                    : (activity['cost'] != null && activity['cost'] > 0)
+                                        ? Icons.payment
+                                        : Icons.check_circle_outline,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            isJoined
+                                ? 'Quitter l\'activité'
+                                : isFull
+                                    ? 'Complet'
+                                    : (activity['cost'] != null && activity['cost'] > 0)
+                                        ? 'Payer et rejoindre (${activity['cost'].toStringAsFixed(2)}€)'
+                                        : 'Rejoindre l\'activité',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
