@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  flutter-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mobile-flutter-app:latest
+    container_name: flutter-mobile-dev
+    
+    # Mount project directory for live development
+    volumes:
+      - .:/app
+      - flutter-pub-cache:/root/.pub-cache
+      - gradle-cache:/root/.gradle
+    
+    # Enable privileged mode for ADB device access
+    privileged: true
+    
+    # Network mode host allows ADB to connect to devices/emulators on host
+    network_mode: "host"
+    
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+    
+    working_dir: /app
+    
+    # Default command
+    command: /bin/bash
+
+# Named volumes for caching to speed up builds
+volumes:
+  flutter-pub-cache:
+  gradle-cache:

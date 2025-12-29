@@ -1,0 +1,56 @@
+# Exclude unnecessary files from Docker build context
+# This speeds up Docker builds by reducing context size
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation (not needed in container)
+*.md
+!DOCKER_SETUP.md
+
+# IDE
+.idea
+.vscode
+*.iml
+
+# Flutter/Dart build artifacts
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Android build artifacts (will be rebuilt in container)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+
+# iOS (not building for iOS in this Docker setup)
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# Tests
+test/
+coverage/
+
+# Misc
+.DS_Store
+*.log
+*.tmp
+*.temp
+
+# Keep these important files (override exclusions):
+!android/app/google-services.json
+!lib/firebase_options.dart
+!android/app/build.gradle.kts
+!android/build.gradle.kts
+!android/settings.gradle.kts
+!pubspec.yaml
+!pubspec.lock
