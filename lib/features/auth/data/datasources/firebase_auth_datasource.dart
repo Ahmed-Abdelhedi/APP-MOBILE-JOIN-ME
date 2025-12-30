@@ -12,12 +12,18 @@ class FirebaseAuthDataSource {
     GoogleSignIn? googleSignIn,
     FirebaseFirestore? firestore,
   })  : _firebaseAuth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance,
-        _googleSignIn = googleSignIn ?? GoogleSignIn(),
+        _googleSignIn = googleSignIn ?? GoogleSignIn(
+          // Force account selection every time
+          signInOption: SignInOption.standard,
+        ),
         _firestore = firestore ?? FirebaseFirestore.instance;
 
   // Sign in with Google
   Future<firebase_auth.User> signInWithGoogle() async {
     try {
+      // Force sign out to clear cached account and show account chooser
+      await _googleSignIn.signOut();
+      
       // Démarrer le processus de connexion Google
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       

@@ -345,7 +345,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         data: (activities) {
           // Filter activities based on search and category
-          final filteredActivities = activities.where((activity) {
+          var filteredActivities = activities.where((activity) {
             final matchesCategory =
                 _selectedCategory == 'Tout' ||
                 activity.category == _selectedCategory;
@@ -358,6 +358,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     .contains(_searchQuery.toLowerCase());
             return matchesCategory && matchesSearch;
           }).toList();
+
+          // Sort: upcoming events first, past events at bottom
+          filteredActivities.sort((a, b) {
+            // If both past or both upcoming, sort by date
+            if (a.isPast == b.isPast) {
+              return a.dateTime.compareTo(b.dateTime);
+            }
+            // Past events go to bottom
+            return a.isPast ? 1 : -1;
+          });
 
           return Column(
             children: [
@@ -555,59 +565,117 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildActivityCard(ActivityModel activity) {
     final isFull = activity.currentParticipants >= activity.maxParticipants;
+    final isPast = activity.isPast;
     
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ActivityDetailsScreen(activity: activity.toMap()),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image Header with Gradient Overlay
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+    return Opacity(
+      opacity: isPast ? 0.6 : 1.0,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        elevation: isPast ? 1 : 2,
+        color: isPast ? Colors.grey.shade100 : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: isPast ? BorderSide(color: Colors.grey.shade300, width: 1) : BorderSide.none,
+        ),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ActivityDetailsScreen(activity: activity.toMap()),
               ),
-              child: Stack(
-                children: [
-                  Hero(
-                    tag: 'activity_${activity.title}',
-                    child: ActivityImageWidget(
-                      activity: activity,
-                      height: 150,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  // Gradient Overlay
-                  Container(
-                    height: 150,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.3),
-                        ],
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image Header with Gradient Overlay
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+                child: Stack(
+                  children: [
+                    Hero(
+                      tag: 'activity_${activity.title}',
+                      child: ColorFiltered(
+                        colorFilter: isPast
+                            ? ColorFilter.mode(
+                                Colors.grey.shade400,
+                                BlendMode.saturation,
+                              )
+                            : const ColorFilter.mode(
+                                Colors.transparent,
+                                BlendMode.multiply,
+                              ),
+                        child: ActivityImageWidget(
+                          activity: activity,
+                          height: 150,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    // Gradient Overlay
+                    Container(
+                      height: 150,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(isPast ? 0.5 : 0.3),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Past Event Badge
+                    if (isPast)
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade800,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.history,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Événement passé',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
 
             Padding(
               padding: const EdgeInsets.all(16),
@@ -621,13 +689,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.secondary.withOpacity(0.2),
+                      color: isPast
+                          ? Colors.grey.shade300
+                          : AppColors.secondary.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       activity.category,
                       style: TextStyle(
-                        color: AppColors.secondary,
+                        color: isPast ? Colors.grey.shade700 : AppColors.secondary,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -639,9 +709,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // Title
                   Text(
                     activity.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      color: isPast ? Colors.grey.shade600 : Colors.black,
+                      decoration: isPast ? TextDecoration.lineThrough : null,
+                      decorationColor: Colors.grey.shade400,
                     ),
                   ),
 
@@ -650,12 +723,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // Location
                   Row(
                     children: [
-                      const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                      Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: isPast ? Colors.grey.shade400 : Colors.grey,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           activity.location,
-                          style: const TextStyle(color: Colors.grey),
+                          style: TextStyle(
+                            color: isPast ? Colors.grey.shade500 : Colors.grey,
+                          ),
                         ),
                       ),
                     ],
@@ -666,11 +745,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // Date & Time
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: isPast ? Colors.grey.shade400 : Colors.grey,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${activity.dateTime.day}/${activity.dateTime.month}/${activity.dateTime.year} à ${activity.dateTime.hour}:${activity.dateTime.minute.toString().padLeft(2, '0')}',
-                        style: const TextStyle(color: Colors.grey),
+                        style: TextStyle(
+                          color: isPast ? Colors.grey.shade500 : Colors.grey,
+                        ),
                       ),
                     ],
                   ),
@@ -792,6 +877,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           builder: (context, snapshot) {
                             final hasJoined = snapshot.data ?? false;
                             
+                            // Past event - show disabled state
+                            if (isPast) {
+                              if (hasJoined) {
+                                return ElevatedButton.icon(
+                                  onPressed: null,
+                                  icon: const Icon(Icons.check_circle),
+                                  label: const Text('Vous avez participé'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.grey.shade400,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    disabledBackgroundColor: Colors.grey.shade400,
+                                    disabledForegroundColor: Colors.white,
+                                  ),
+                                );
+                              }
+                              return ElevatedButton.icon(
+                                onPressed: null,
+                                icon: const Icon(Icons.block),
+                                label: const Text('Événement terminé'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.grey.shade400,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  disabledBackgroundColor: Colors.grey.shade400,
+                                  disabledForegroundColor: Colors.white,
+                                ),
+                              );
+                            }
+                            
+                            // Active event logic
                             if (hasJoined) {
                               return Row(
                                 children: [
@@ -870,6 +992,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

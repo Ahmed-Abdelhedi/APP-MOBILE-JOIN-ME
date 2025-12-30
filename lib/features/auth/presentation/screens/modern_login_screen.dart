@@ -13,6 +13,7 @@ class ModernLoginScreen extends ConsumerStatefulWidget {
 }
 
 class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -21,8 +22,31 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
   bool _obscureConfirmPassword = true;
   bool _isLogin = true;
   bool _isLoading = false;
+  String? _emailError;
+  bool _emailTouched = false;
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Email is required';
+    }
+    
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    );
+    
+    if (!emailRegex.hasMatch(value.trim())) {
+      return 'Invalid email address';
+    }
+    
+    return null;
+  }
 
   void _handleAuth() async {
+    // Trigger validation
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final name = _nameController.text.trim();
@@ -168,6 +192,8 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
     bool isPassword = false,
     bool isConfirmPassword = false,
     TextInputType? keyboardType,
+    String? Function(String?)? validator,
+    void Function(String)? onChanged,
   }) {
     final bool obscure = isPassword
         ? (isConfirmPassword ? _obscureConfirmPassword : _obscurePassword)
@@ -185,22 +211,46 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
             color: Colors.grey[50],
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Colors.grey[200]!,
+              color: validator != null && _emailTouched && _emailError != null
+                  ? Colors.red.shade400
+                  : Colors.grey[200]!,
+              width: validator != null && _emailTouched && _emailError != null ? 2 : 1,
             ),
           ),
-          child: TextField(
+          child: TextFormField(
             controller: controller,
             obscureText: obscure,
             keyboardType: keyboardType,
+            validator: validator,
+            onChanged: (value) {
+              if (validator != null) {
+                setState(() {
+                  _emailTouched = true;
+                  _emailError = validator(value);
+                });
+              }
+              onChanged?.call(value);
+            },
+            style: TextStyle(
+              color: validator != null && _emailTouched && _emailError != null
+                  ? Colors.red.shade700
+                  : Colors.black87,
+            ),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(color: Colors.grey[400]),
-              prefixIcon: Icon(icon, color: AppColors.primary),
+              prefixIcon: Icon(
+                icon,
+                color: validator != null && _emailTouched && _emailError != null
+                    ? Colors.red.shade400
+                    : AppColors.primary,
+              ),
               suffixIcon: isPassword
                   ? IconButton(
                       icon: Icon(
@@ -221,7 +271,40 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
                     )
                   : null,
               border: InputBorder.none,
+              errorStyle: const TextStyle(height: 0, fontSize: 0),
               contentPadding: const EdgeInsets.all(16),
+            ),
+          ),
+        ),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          height: validator != null && _emailTouched && _emailError != null ? 24 : 0,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 300),
+            opacity: validator != null && _emailTouched && _emailError != null ? 1.0 : 0.0,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6, left: 12),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 14,
+                    color: Colors.red.shade600,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _emailError ?? '',
+                      style: TextStyle(
+                        color: Colors.red.shade600,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -309,25 +392,28 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
                       ),
                     ],
                   ),
-                  child: Column(
-                    children: [
-                      if (!_isLogin) ...[
-                        _buildTextField(
-                          controller: _nameController,
-                          label: 'Full Name',
-                          icon: Icons.person_outline,
-                          hint: 'John Doe',
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        if (!_isLogin) ...[
+                          _buildTextField(
+                            controller: _nameController,
+                            label: 'Full Name',
+                            icon: Icons.person_outline,
+                            hint: 'John Doe',
+                          ),
+                          const SizedBox(height: 16),
+                        ],
 
-                      _buildTextField(
-                        controller: _emailController,
-                        label: 'Email',
-                        icon: Icons.email_outlined,
-                        hint: 'john@example.com',
-                        keyboardType: TextInputType.emailAddress,
-                      ),
+                        _buildTextField(
+                          controller: _emailController,
+                          label: 'Email',
+                          icon: Icons.email_outlined,
+                          hint: 'john@example.com',
+                          keyboardType: TextInputType.emailAddress,
+                          validator: _validateEmail,
+                        ),
 
                       const SizedBox(height: 16),
 
@@ -469,7 +555,8 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
                           ),
                         ),
                       ),
-                    ],
+                      ],
+                    ),
                   ),
                 )
                     .animate()

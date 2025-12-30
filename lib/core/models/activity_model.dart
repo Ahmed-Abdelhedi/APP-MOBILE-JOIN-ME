@@ -52,6 +52,12 @@ class ActivityModel {
   /// Nombre de places restantes
   int get availableSpots => maxParticipants - currentParticipants;
 
+  /// Vérifier si l'événement est passé
+  bool get isPast => DateTime.now().isAfter(dateTime);
+
+  /// Vérifier si l'événement est actif (pas passé et pas annulé)
+  bool get isActive => !isPast && status != ActivityStatus.cancelled;
+
   /// Conversion depuis Firestore
   factory ActivityModel.fromFirestore(Map<String, dynamic> data, String id) {
     return ActivityModel(

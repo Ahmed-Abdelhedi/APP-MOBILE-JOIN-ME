@@ -231,49 +231,109 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen>
     bool isHosted = false,
     bool isPast = false,
   }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: activity.imageUrl != null
-                ? CachedNetworkImage(
-                    imageUrl: activity.imageUrl!,
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      height: 150,
-                      color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      height: 150,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.image_not_supported, size: 50),
-                    ),
-                  )
-                : Container(
-                    height: 150,
-                    color: AppColors.primary.withOpacity(0.2),
-                    child: Center(
-                      child: Icon(
-                        Icons.event,
-                        size: 50,
-                        color: AppColors.primary,
+    return Opacity(
+      opacity: isPast ? 0.7 : 1.0,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: isPast ? 1 : 2,
+        color: isPast ? Colors.grey.shade100 : Colors.white,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Stack(
+                children: [
+                  ColorFiltered(
+                    colorFilter: isPast
+                        ? ColorFilter.mode(
+                            Colors.grey.shade400,
+                            BlendMode.saturation,
+                          )
+                        : const ColorFilter.mode(
+                            Colors.transparent,
+                            BlendMode.multiply,
+                          ),
+                    child: activity.imageUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: activity.imageUrl!,
+                            height: 150,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              height: 150,
+                              color: Colors.grey[200],
+                              child: const Center(child: CircularProgressIndicator()),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              height: 150,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.image_not_supported, size: 50),
+                            ),
+                          )
+                        : Container(
+                            height: 150,
+                            color: AppColors.primary.withOpacity(0.2),
+                            child: Center(
+                              child: Icon(
+                                Icons.event,
+                                size: 50,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                  ),
+                  // Past Event Badge
+                  if (isPast)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade800,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.history,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Terminé',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-          ),
+                ],
+              ),
+            ),
 
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -281,15 +341,18 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen>
                     Expanded(
                       child: Text(
                         activity.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: isPast ? Colors.grey.shade600 : Colors.black,
+                          decoration: isPast ? TextDecoration.lineThrough : null,
+                          decorationColor: Colors.grey.shade400,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (showStatus)
+                    if (showStatus && !isPast)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -314,11 +377,17 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen>
                 
                 Row(
                   children: [
-                    Icon(Icons.category, size: 16, color: Colors.grey[600]),
+                    Icon(
+                      Icons.category,
+                      size: 16,
+                      color: isPast ? Colors.grey.shade400 : Colors.grey[600],
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       activity.category,
-                      style: TextStyle(color: Colors.grey[600]),
+                      style: TextStyle(
+                        color: isPast ? Colors.grey.shade500 : Colors.grey[600],
+                      ),
                     ),
                   ],
                 ),
@@ -326,18 +395,30 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen>
                 
                 Row(
                   children: [
-                    Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                    Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: isPast ? Colors.grey.shade400 : Colors.grey[600],
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       DateFormat('dd MMM yyyy', 'fr_FR').format(activity.dateTime),
-                      style: TextStyle(color: Colors.grey[600]),
+                      style: TextStyle(
+                        color: isPast ? Colors.grey.shade500 : Colors.grey[600],
+                      ),
                     ),
                     const SizedBox(width: 16),
-                    Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                    Icon(
+                      Icons.access_time,
+                      size: 16,
+                      color: isPast ? Colors.grey.shade400 : Colors.grey[600],
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       DateFormat('HH:mm').format(activity.dateTime),
-                      style: TextStyle(color: Colors.grey[600]),
+                      style: TextStyle(
+                        color: isPast ? Colors.grey.shade500 : Colors.grey[600],
+                      ),
                     ),
                   ],
                 ),
@@ -345,12 +426,18 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen>
                 
                 Row(
                   children: [
-                    Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                    Icon(
+                      Icons.location_on,
+                      size: 16,
+                      color: isPast ? Colors.grey.shade400 : Colors.grey[600],
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         activity.location,
-                        style: TextStyle(color: Colors.grey[600]),
+                        style: TextStyle(
+                          color: isPast ? Colors.grey.shade500 : Colors.grey[600],
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -362,12 +449,16 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen>
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Icon(Icons.people, size: 20, color: AppColors.primary),
+                      Icon(
+                        Icons.people,
+                        size: 20,
+                        color: isPast ? Colors.grey.shade400 : AppColors.primary,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         '${activity.participants.length}/${activity.maxParticipants} participants',
                         style: TextStyle(
-                          color: AppColors.primary,
+                          color: isPast ? Colors.grey.shade500 : AppColors.primary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -377,7 +468,8 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen>
               ],
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
