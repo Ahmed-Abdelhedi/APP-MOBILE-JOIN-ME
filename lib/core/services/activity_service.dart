@@ -26,12 +26,61 @@ class ActivityService {
         throw Exception('Utilisateur non connecté');
       }
 
+      // Get activity details to fetch creator and activity title
+      final activityDoc = await _firestore.collection('activities').doc(activityId).get();
+      if (!activityDoc.exists) {
+        throw Exception('Activité introuvable');
+      }
+      
+      final activityData = activityDoc.data() as Map<String, dynamic>;
+      final creatorId = activityData['creatorId'] as String?;
+      final activityTitle = activityData['title'] as String? ?? 'Activité';
+      
+      // Get current participants list
+      List<String> participants = List<String>.from(activityData['participants'] ?? []);
+      int currentParticipants = activityData['currentParticipants'] ?? 0;
+      
+      // Check if already joined
+      if (participants.contains(userId)) {
+        print('⚠️ Utilisateur déjà inscrit');
+        return;
+      }
+      
+      // Add user to participants
+      participants.add(userId);
+      currentParticipants++;
+
+      // Get user's name
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final userData = userDoc.data() as Map<String, dynamic>?;
+      final userName = userData?['displayName'] as String? ?? userData?['name'] as String? ?? 'Un utilisateur';
+
+      // Update activity with new participants list
       await _firestore.collection('activities').doc(activityId).update({
-        'participants': FieldValue.arrayUnion([userId]),
-        'currentParticipants': FieldValue.increment(1),
+        'participants': participants,
+        'currentParticipants': currentParticipants,
       });
 
-      print('✅ Utilisateur $userId a rejoint l\'activité $activityId');
+      // Send notification to the creator
+      if (creatorId != null && creatorId != userId) {
+        await _firestore
+            .collection('users')
+            .doc(creatorId)
+            .collection('notifications')
+            .add({
+          'type': 'event_joined',
+          'title': 'Nouveau participant',
+          'body': '$userName a rejoint votre événement "$activityTitle"',
+          'activityId': activityId,
+          'activityTitle': activityTitle,
+          'participantId': userId,
+          'participantName': userName,
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      print('✅ Utilisateur $userId ($userName) a rejoint l\'activité $activityId');
     } catch (e) {
       print('❌ Erreur joinActivity: $e');
       rethrow;
@@ -46,12 +95,60 @@ class ActivityService {
         throw Exception('Utilisateur non connecté');
       }
 
+      // Get current activity data
+      final activityDoc = await _firestore.collection('activities').doc(activityId).get();
+      if (!activityDoc.exists) {
+        throw Exception('Activité introuvable');
+      }
+      
+      final activityData = activityDoc.data() as Map<String, dynamic>;
+      final creatorId = activityData['creatorId'] as String?;
+      final activityTitle = activityData['title'] as String? ?? 'Activité';
+      
+      // Get current participants list
+      List<String> participants = List<String>.from(activityData['participants'] ?? []);
+      int currentParticipants = activityData['currentParticipants'] ?? 0;
+      
+      // Check if user is in participants
+      if (!participants.contains(userId)) {
+        print('⚠️ Utilisateur pas inscrit');
+        return;
+      }
+      
+      // Get user's name
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final userData = userDoc.data() as Map<String, dynamic>?;
+      final userName = userData?['displayName'] as String? ?? userData?['name'] as String? ?? 'Un utilisateur';
+      
+      // Remove user from participants
+      participants.remove(userId);
+      currentParticipants = (currentParticipants - 1).clamp(0, 999);
+
       await _firestore.collection('activities').doc(activityId).update({
-        'participants': FieldValue.arrayRemove([userId]),
-        'currentParticipants': FieldValue.increment(-1),
+        'participants': participants,
+        'currentParticipants': currentParticipants,
       });
 
-      print('✅ Utilisateur $userId a quitté l\'activité $activityId');
+      // Send notification to the creator
+      if (creatorId != null && creatorId != userId) {
+        await _firestore
+            .collection('users')
+            .doc(creatorId)
+            .collection('notifications')
+            .add({
+          'type': 'event_left',
+          'title': 'Participant a quitté',
+          'body': '$userName a quitté votre événement "$activityTitle"',
+          'activityId': activityId,
+          'activityTitle': activityTitle,
+          'participantId': userId,
+          'participantName': userName,
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      print('✅ Utilisateur $userId ($userName) a quitté l\'activité $activityId');
     } catch (e) {
       print('❌ Erreur leaveActivity: $e');
       rethrow;
@@ -148,6 +245,106 @@ class ActivityService {
       print('❌ Error updating activity image: $e');
       rethrow;
     }
+  }
+
+  // ============================================================
+  // INTERESTED FUNCTIONALITY
+  // ============================================================
+
+  /// Mark user as interested in an activity
+  Future<void> markInterested(String activityId) async {
+    try {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        throw Exception('Utilisateur non connecté');
+      }
+
+      await _firestore.collection('activities').doc(activityId).update({
+        'interestedUsers': FieldValue.arrayUnion([userId]),
+      });
+
+      print('✅ Utilisateur $userId a marqué intérêt pour $activityId');
+    } catch (e) {
+      print('❌ Erreur markInterested: $e');
+      rethrow;
+    }
+  }
+
+  /// Remove user interest from an activity
+  Future<void> removeInterested(String activityId) async {
+    try {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        throw Exception('Utilisateur non connecté');
+      }
+
+      await _firestore.collection('activities').doc(activityId).update({
+        'interestedUsers': FieldValue.arrayRemove([userId]),
+      });
+
+      print('✅ Utilisateur $userId a retiré son intérêt pour $activityId');
+    } catch (e) {
+      print('❌ Erreur removeInterested: $e');
+      rethrow;
+    }
+  }
+
+  /// Check if user is interested in an activity
+  Future<bool> isInterested(String activityId) async {
+    try {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) return false;
+
+      final doc = await _firestore.collection('activities').doc(activityId).get();
+      if (!doc.exists) return false;
+
+      final interestedUsers = List<String>.from(doc.data()?['interestedUsers'] ?? []);
+      return interestedUsers.contains(userId);
+    } catch (e) {
+      print('❌ Erreur isInterested: $e');
+      return false;
+    }
+  }
+
+  /// Stream to check if user is interested in an activity
+  Stream<bool> isInterestedStream(String activityId) {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) return Stream.value(false);
+
+    return _firestore
+        .collection('activities')
+        .doc(activityId)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return false;
+      final interestedUsers = List<String>.from(doc.data()?['interestedUsers'] ?? []);
+      return interestedUsers.contains(userId);
+    });
+  }
+
+  /// Get count of interested users for an activity
+  Future<int> getInterestedCount(String activityId) async {
+    try {
+      final doc = await _firestore.collection('activities').doc(activityId).get();
+      if (!doc.exists) return 0;
+      final interestedUsers = List<String>.from(doc.data()?['interestedUsers'] ?? []);
+      return interestedUsers.length;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  /// Stream for interested count
+  Stream<int> interestedCountStream(String activityId) {
+    return _firestore
+        .collection('activities')
+        .doc(activityId)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return 0;
+      final interestedUsers = List<String>.from(doc.data()?['interestedUsers'] ?? []);
+      return interestedUsers.length;
+    });
   }
 }
 

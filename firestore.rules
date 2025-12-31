@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+  		
+    
+    // ============================================
+    // RÈGLES POUR LES UTILISATEURS
+    // ============================================
+    match /users/{userId} {
+      // Lecture : tout utilisateur connecté peut lire tous les profils
+      allow read: if request.auth != null;
+      
+      // Création : uniquement lors de l'inscription, l'utilisateur créé son propre document
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Mise à jour : seulement son propre profil
+      allow update: if request.auth != null && request.auth.uid == userId;
+      
+      // Suppression : seulement son propre profil
+      allow delete: if request.auth != null && request.auth.uid == userId;
+      
+      // ============================================
+      // SOUS-COLLECTION : NOTIFICATIONS
+      // ============================================
+      match /notifications/{notificationId} {
+        // Lecture : seulement ses propres notifications
+        allow read: if request.auth != null && request.auth.uid == userId;
+        
+        // Création : tout utilisateur authentifié peut créer des notifications
+        // (pour permettre au système d'envoyer des notifications entre utilisateurs)
+        allow create: if request.auth != null;
+        
+        // Mise à jour : seulement ses propres notifications (pour marquer comme lu)
+        allow update: if request.auth != null && request.auth.uid == userId;
+        
+        // Suppression : seulement ses propres notifications
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // ============================================
+    // RÈGLES POUR LES ACTIVITÉS
+    // ============================================
+    match /activities/{activityId} {
+      // Lecture : tout utilisateur connecté peut voir les activités
+      allow read: if request.auth != null;
+      
+      // Création : tout utilisateur connecté peut créer une activité
+      // Doit inclure son propre uid comme creatorId
+      allow create: if request.auth != null 
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.participants is list
+                    && request.auth.uid in request.resource.data.participants;
+      
+      // Mise à jour : 
+      // - Le créateur peut modifier l'activité
+      // - Tout participant peut mettre à jour le tableau participants
+      allow update: if request.auth != null && (
+        // Le créateur peut tout modifier
+        resource.data.creatorId == request.auth.uid
+        ||
+        // Un utilisateur peut se joindre/quitter
+        (
+          // Vérifie que seuls participants et currentParticipants changent
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'currentParticipants']) ||
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'currentParticipants', 'updatedAt']))
+          && (
+            // Ajout : l'utilisateur s'ajoute lui-même
+            (!(request.auth.uid in resource.data.participants) && (request.auth.uid in request.resource.data.participants))
+            ||
+            // Retrait : l'utilisateur se retire lui-même
+            ((request.auth.uid in resource.data.participants) && !(request.auth.uid in request.resource.data.participants))
+          )
+        )
+      );
+      
+      // Suppression : seulement le créateur
+      allow delete: if request.auth != null && resource.data.creatorId == request.auth.uid;
+    }
+    
+    // ============================================
+    // RÈGLES POUR LES CHATS
+    // ============================================
+    match /chats/{chatId} {
+      // Lecture : tout utilisateur connecté peut lire les chats
+      allow read: if request.auth != null;
+      
+      // Création : tout utilisateur connecté peut créer un chat
+      allow create: if request.auth != null;
+      
+      // Mise à jour : tout utilisateur connecté peut mettre à jour
+      // (pour lastMessage, participants, etc.)
+      allow update: if request.auth != null;
+      
+      // Suppression : non autorisé (les chats persistent)
+      allow delete: if false;
+      
+      // ============================================
+      // SOUS-COLLECTION : MESSAGES
+      // ============================================
+      match /messages/{messageId} {
+        // Lecture : tout utilisateur connecté peut lire les messages
+        // (la sécurité est gérée au niveau du chat parent)
+        allow read: if request.auth != null;
+        
+        // Création : tout participant peut envoyer des messages
+        // Le senderId doit correspondre à l'uid de l'utilisateur
+        allow create: if request.auth != null 
+                      && request.resource.data.senderId == request.auth.uid;
+        
+        // Mise à jour : seulement l'émetteur peut modifier son message
+        // (pour soft delete ou édition)
+        allow update: if request.auth != null 
+                      && resource.data.senderId == request.auth.uid;
+        
+        // Suppression : seulement l'émetteur
+        allow delete: if request.auth != null 
+                      && resource.data.senderId == request.auth.uid;
+      }
+    }
+  }
+}

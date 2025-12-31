@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:mobile/core/constants/app_colors.dart';
-import 'onboarding_screen.dart';
+import 'modern_login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,14 +14,14 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToOnboarding();
+    _navigateToLogin();
   }
 
-  Future<void> _navigateToOnboarding() async {
+  Future<void> _navigateToLogin() async {
     await Future.delayed(const Duration(seconds: 3));
     if (mounted) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+        MaterialPageRoute(builder: (context) => const ModernLoginScreen()),
       );
     }
   }

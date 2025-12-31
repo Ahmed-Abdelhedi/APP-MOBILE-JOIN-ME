@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -96,25 +97,56 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     
     return joinedActivitiesAsync.when(
       loading: () => Scaffold(
-        appBar: AppBar(
-          title: const Text('Messages'),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF7C4DFF), Color(0xFF6A3DE8), Color(0xFF00BCD4)],
+            ),
+          ),
+          child: const Center(child: CircularProgressIndicator(color: Colors.white)),
         ),
-        body: const Center(child: CircularProgressIndicator()),
       ),
       error: (error, stack) => Scaffold(
-        appBar: AppBar(
-          title: const Text('Messages'),
-        ),
-        body: Center(
-          child: Text('Erreur: $error'),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF7C4DFF), Color(0xFF6A3DE8), Color(0xFF00BCD4)],
+            ),
+          ),
+          child: Center(
+            child: Text('Erreur: $error', style: const TextStyle(color: Colors.white)),
+          ),
         ),
       ),
       data: (joinedActivities) {
         return Scaffold(
+          extendBodyBehindAppBar: true,
           appBar: AppBar(
-            title: const Text('Messages'),
+            backgroundColor: Colors.white.withOpacity(0.1),
+            elevation: 0,
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
@@ -123,52 +155,66 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 );
               },
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.search),
-                onPressed: () {},
-              ),
-            ],
+            title: const Text(
+              'Messages',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+            centerTitle: true,
           ),
-          body: joinedActivities.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  itemCount: joinedActivities.length,
-                  itemBuilder: (context, index) {
-                    final activity = joinedActivities[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: AppColors.primary.withOpacity(0.2),
-                        child: Icon(
-                          _getCategoryIcon(activity.category),
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      title: Text(
-                        activity.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: const Text(
-                        'Appuyez pour ouvrir le chat',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: Icon(
-                        Icons.chevron_right,
-                        color: Colors.grey[400],
-                      ),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => ConversationScreen(
-                              activityId: activity.id,
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF7C4DFF), Color(0xFF6A3DE8), Color(0xFF00BCD4)],
+              ),
+            ),
+            child: Stack(
+              children: [
+                // Decorative background blobs
+                Positioned(
+                  top: 40,
+                  right: 40,
+                  child: Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                 ),
+                Positioned(
+                  bottom: 80,
+                  left: -40,
+                  child: Container(
+                    width: 280,
+                    height: 280,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00BCD4).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                // Content
+                SafeArea(
+                  child: joinedActivities.isEmpty
+                      ? _buildEmptyState()
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.only(top: 16, bottom: 16),
+                            itemCount: joinedActivities.length,
+                            itemBuilder: (context, index) {
+                              final activity = joinedActivities[index];
+                              return _buildConversationCard(activity, index);
+                            },
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          ),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _selectedIndex,
             selectedItemColor: AppColors.primary,
@@ -218,6 +264,248 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       },
     );
+  }
+
+  // Build modern conversation card matching reference UI
+  Widget _buildConversationCard(ActivityModel activity, int index) {
+    final unreadCount = 0; // TODO: Integrate with real unread message count
+    
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(16),
+        elevation: 0,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => ConversationScreen(
+                  activityId: activity.id,
+                ),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.5),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Event photo with badge
+                Stack(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: activity.imageUrl != null && activity.imageUrl!.isNotEmpty
+                            ? Image.network(
+                                activity.imageUrl!,
+                                width: 56,
+                                height: 56,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          const Color(0xFFE1BEE7),
+                                          const Color(0xFFCE93D8),
+                                        ],
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      _getCategoryIcon(activity.category),
+                                      color: const Color(0xFF7C4DFF),
+                                      size: 24,
+                                    ),
+                                  );
+                                },
+                              )
+                            : activity.imageAssetPath != null
+                                ? Image.asset(
+                                    activity.imageAssetPath!,
+                                    width: 56,
+                                    height: 56,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              const Color(0xFFE1BEE7),
+                                              const Color(0xFFCE93D8),
+                                            ],
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          _getCategoryIcon(activity.category),
+                                          color: const Color(0xFF7C4DFF),
+                                          size: 24,
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          const Color(0xFFE1BEE7),
+                                          const Color(0xFFCE93D8),
+                                        ],
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      _getCategoryIcon(activity.category),
+                                      color: const Color(0xFF7C4DFF),
+                                      size: 24,
+                                    ),
+                                  ),
+                      ),
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF7C4DFF), Color(0xFF00BCD4)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF7C4DFF).withOpacity(0.4),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
+                          child: Center(
+                            child: Text(
+                              unreadCount > 99 ? '99+' : unreadCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                // Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              activity.title,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: unreadCount > 0 ? FontWeight.w700 : FontWeight.w600,
+                                color: unreadCount > 0 ? Colors.grey[900] : Colors.grey[700],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _getRelativeTime(activity.dateTime),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                              color: unreadCount > 0 ? const Color(0xFF7C4DFF) : Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Appuyez pour ouvrir le chat',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: unreadCount > 0 ? const Color(0xFF7C4DFF) : Colors.grey[500],
+                          fontWeight: unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Chevron
+                Icon(
+                  Icons.chevron_right,
+                  color: unreadCount > 0 ? const Color(0xFF7C4DFF) : Colors.grey[400],
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Get relative time string
+  String _getRelativeTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inDays == 0) {
+      return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else if (difference.inDays == 1) {
+      return 'Hier';
+    } else if (difference.inDays < 7) {
+      final weekdays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+      return weekdays[dateTime.weekday - 1];
+    } else {
+      return '${dateTime.day}/${dateTime.month}';
+    }
   }
 
   // État vide quand aucune activité rejointe

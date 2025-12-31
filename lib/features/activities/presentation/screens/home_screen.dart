@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile/core/constants/app_colors.dart';
 import 'package:mobile/core/widgets/translated_bottom_nav.dart';
 import 'package:mobile/core/services/activity_service.dart';
+import 'package:mobile/core/services/notification_service.dart';
+import 'package:mobile/core/services/notification_preferences_service.dart';
 import 'package:mobile/core/providers/firebase_providers.dart';
 import 'package:mobile/core/models/activity_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../../shared/widgets/feedback_widget.dart';
 import 'activity_details_screen.dart';
 import 'create_activity_screen.dart';
 import '../../../map/presentation/screens/map_screen.dart';
@@ -28,6 +32,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _showSearch = false;
+  
+  // Advanced filters
+  String _selectedTimePeriod = 'Tout';
+  double _maxDistance = 50.0; // km
+  
+  final List<String> _timePeriods = [
+    'Tout',
+    'Aujourd\'hui',
+    'Cette semaine',
+    'Ce mois',
+    'Les 3 prochains mois',
+  ];
 
   final List<String> _categories = [
     'Tout',
@@ -37,7 +53,232 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     'Fitness',
     'Culture',
     'Food',
+    'Musique',
+    'Art',
+    'Tech',
+    'Voyage',
+    'Fête',
   ];
+
+  void _showFilterBottomSheet() {
+    String tempTimePeriod = _selectedTimePeriod;
+    String tempCategory = _selectedCategory;
+    double tempDistance = _maxDistance;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          height: MediaQuery.of(context).size.height * 0.75,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              // Title
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Filtrer les activités',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setModalState(() {
+                          tempTimePeriod = 'Tout';
+                          tempCategory = 'Tout';
+                          tempDistance = 50.0;
+                        });
+                      },
+                      child: const Text('Réinitialiser'),
+                    ),
+                  ],
+                ),
+              ),
+              
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Time Period Section
+                      const Text(
+                        '📅 Période',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _timePeriods.map((period) {
+                          final isSelected = tempTimePeriod == period;
+                          return ChoiceChip(
+                            label: Text(period),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setModalState(() => tempTimePeriod = period);
+                            },
+                            selectedColor: AppColors.primary,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black87,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // Category Section
+                      const Text(
+                        '🏷️ Catégorie',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _categories.map((category) {
+                          final isSelected = tempCategory == category;
+                          return ChoiceChip(
+                            label: Text(category),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setModalState(() => tempCategory = category);
+                            },
+                            selectedColor: AppColors.primary,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black87,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // Distance Section
+                      Text(
+                        '📍 Distance maximale: ${tempDistance.round()} km',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Text('1 km', style: TextStyle(fontSize: 12)),
+                          Expanded(
+                            child: Slider(
+                              value: tempDistance,
+                              min: 1,
+                              max: 100,
+                              divisions: 99,
+                              activeColor: AppColors.primary,
+                              onChanged: (value) {
+                                setModalState(() => tempDistance = value);
+                              },
+                            ),
+                          ),
+                          const Text('100 km', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                      
+                      // Quick distance buttons
+                      Wrap(
+                        spacing: 8,
+                        children: [5.0, 10.0, 25.0, 50.0, 100.0].map((distance) {
+                          final isSelected = tempDistance == distance;
+                          return ActionChip(
+                            label: Text('${distance.round()} km'),
+                            backgroundColor: isSelected ? AppColors.primary : Colors.grey[200],
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black87,
+                            ),
+                            onPressed: () {
+                              setModalState(() => tempDistance = distance);
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Apply Button
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _selectedTimePeriod = tempTimePeriod;
+                          _selectedCategory = tempCategory;
+                          _maxDistance = tempDistance;
+                        });
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Appliquer les filtres',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   void _joinActivity(ActivityModel activity) {
     final hasFee = activity.cost != null && activity.cost! > 0;
@@ -55,36 +296,170 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _confirmJoin(ActivityModel activity) async {
     try {
       final activityService = ref.read(activityServiceProvider);
+      final notificationService = NotificationService();
+      
       await activityService.joinActivity(activity.id);
       
+      // Schedule notification for the event
+      await notificationService.scheduleEventNotification(
+        activityId: activity.id,
+        activityTitle: activity.title,
+        eventDateTime: activity.dateTime,
+        description: activity.description,
+      );
+      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text('Vous avez rejoint "${activity.title}" !'),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
+        // Show modern success feedback with confetti
+        FeedbackWidget.showSuccess(
+          context,
+          message: '🎉 Rejointe avec succès !',
+          subtitle: '${activity.title} - Notification programmée',
+          showConfetti: true,
+          duration: const Duration(seconds: 3),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e'),
-            backgroundColor: Colors.red,
-          ),
+        // Determine error type for better UX
+        String errorMessage = 'Une erreur est survenue';
+        if (e.toString().contains('full')) {
+          errorMessage = 'Événement complet';
+        } else if (e.toString().contains('network')) {
+          errorMessage = 'Problème de connexion';
+        } else if (e.toString().contains('already')) {
+          errorMessage = 'Déjà inscrit';
+        }
+        
+        FeedbackWidget.showError(
+          context,
+          message: errorMessage,
+          subtitle: 'Veuillez réessayer plus tard',
         );
       }
     }
+  }
+
+  /// Show notification settings dialog for an activity
+  /// Each event has its own timing setting
+  void _showNotificationSettingsDialog(ActivityModel activity) async {
+    final preferencesService = NotificationPreferencesService();
+    final notificationService = NotificationService();
+    
+    // Get the current timing for THIS specific event
+    int selectedMinutes = await preferencesService.getEventTiming(activity.id);
+    
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.notifications, color: AppColors.primary),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Rappel pour cet événement',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Show event name in a highlighted box
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.event, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          activity.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Quand souhaitez-vous être notifié ?',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...NotificationPreferences.timingOptions.map((minutes) {
+                  return RadioListTile<int>(
+                    title: Text(NotificationPreferences.getTimingLabel(minutes)),
+                    value: minutes,
+                    groupValue: selectedMinutes,
+                    activeColor: AppColors.primary,
+                    dense: true,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedMinutes = value!;
+                      });
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
+                
+                // Save per-event timing (NOT global preferences)
+                await preferencesService.setEventTiming(activity.id, selectedMinutes);
+                
+                // Reschedule notification with new timing for THIS event
+                await notificationService.cancelEventNotification(activity.id, removeEventTiming: false);
+                await notificationService.scheduleEventNotification(
+                  activityId: activity.id,
+                  activityTitle: activity.title,
+                  eventDateTime: activity.dateTime,
+                  description: activity.description,
+                  minutesBefore: selectedMinutes,
+                );
+                
+                if (mounted) {
+                  FeedbackWidget.showSuccess(
+                    context,
+                    message: 'Rappel mis à jour',
+                    subtitle: NotificationPreferences.getTimingLabel(selectedMinutes),
+                  );
+                }
+              },
+              icon: const Icon(Icons.check),
+              label: const Text('Confirmer'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _leaveActivity(ActivityModel activity) async {
@@ -109,23 +484,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (confirm == true && mounted) {
       try {
         final activityService = ref.read(activityServiceProvider);
+        final notificationService = NotificationService();
+        
         await activityService.leaveActivity(activity.id);
         
+        // Cancel the notification
+        await notificationService.cancelEventNotification(activity.id);
+        
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Vous avez quitté "${activity.title}"'),
-              backgroundColor: Colors.orange,
-            ),
+          FeedbackWidget.showInfo(
+            context,
+            message: 'Vous avez quitté l\'activité',
+            subtitle: 'Notification annulée',
+            duration: const Duration(seconds: 2),
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Erreur: $e'),
-              backgroundColor: Colors.red,
-            ),
+          FeedbackWidget.showError(
+            context,
+            message: 'Erreur lors du départ',
+            subtitle: 'Veuillez réessayer',
           );
         }
       }
@@ -291,14 +670,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             : null,
         actions: [
           if (!_showSearch) ...[
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const NotificationsScreen(),
-                  ),
+            // Notification button with badge
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(ref.read(currentUserProvider)?.uid)
+                  .collection('notifications')
+                  .where('read', isEqualTo: false)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                final unreadCount = snapshot.hasData ? snapshot.data!.docs.length : 0;
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
                 );
               },
             ).animate().scale(delay: 100.ms, duration: 300.ms),
@@ -310,6 +730,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 });
               },
             ).animate().scale(delay: 200.ms, duration: 300.ms),
+            // Filter button with badge indicator
+            Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.tune),
+                  onPressed: _showFilterBottomSheet,
+                ).animate().scale(delay: 300.ms, duration: 300.ms),
+                // Show badge if filters are active
+                if (_selectedTimePeriod != 'Tout' || _maxDistance != 50.0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ],
         ],
       ),
@@ -344,11 +787,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         data: (activities) {
-          // Filter activities based on search and category
+          // Filter activities based on search, category, time period, and distance
+          final now = DateTime.now();
           var filteredActivities = activities.where((activity) {
+            // Category filter
             final matchesCategory =
                 _selectedCategory == 'Tout' ||
                 activity.category == _selectedCategory;
+            
+            // Search filter
             final matchesSearch = _searchQuery.isEmpty ||
                 activity.title
                     .toLowerCase()
@@ -356,7 +803,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 activity.location
                     .toLowerCase()
                     .contains(_searchQuery.toLowerCase());
-            return matchesCategory && matchesSearch;
+            
+            // Time period filter
+            bool matchesTimePeriod = true;
+            if (_selectedTimePeriod != 'Tout') {
+              final activityDate = activity.dateTime;
+              switch (_selectedTimePeriod) {
+                case 'Aujourd\'hui':
+                  matchesTimePeriod = activityDate.year == now.year &&
+                      activityDate.month == now.month &&
+                      activityDate.day == now.day;
+                  break;
+                case 'Cette semaine':
+                  final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+                  final endOfWeek = startOfWeek.add(const Duration(days: 7));
+                  matchesTimePeriod = activityDate.isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
+                      activityDate.isBefore(endOfWeek);
+                  break;
+                case 'Ce mois':
+                  matchesTimePeriod = activityDate.year == now.year &&
+                      activityDate.month == now.month;
+                  break;
+                case 'Les 3 prochains mois':
+                  final threeMonthsLater = DateTime(now.year, now.month + 3, now.day);
+                  matchesTimePeriod = activityDate.isAfter(now.subtract(const Duration(days: 1))) &&
+                      activityDate.isBefore(threeMonthsLater);
+                  break;
+              }
+            }
+            
+            // Distance filter (only if activity has coordinates)
+            bool matchesDistance = true;
+            // Note: Distance filtering would require user's current location
+            // For now, we'll skip this if we don't have the user's location
+            // This can be enhanced later with actual geolocation
+            
+            return matchesCategory && matchesSearch && matchesTimePeriod && matchesDistance;
           }).toList();
 
           // Sort: upcoming events first, past events at bottom
@@ -371,71 +853,87 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
           return Column(
             children: [
-              // Categories
-              Container(
+              // Categories with scroll indicator
+              SizedBox(
                 height: 50,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _categories.length,
-                  itemBuilder: (context, index) {
-                    final isSelected = _selectedCategory == _categories[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: isSelected
-                          ? Container(
-                              decoration: BoxDecoration(
-                                gradient: AppColors.primaryGradient,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withOpacity(0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedCategory = _categories[index];
-                                    });
-                                  },
+                child: ShaderMask(
+                  shaderCallback: (Rect bounds) {
+                    return LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        Colors.white,
+                        Colors.white,
+                        Colors.white,
+                        Colors.white.withOpacity(0.0),
+                      ],
+                      stops: const [0.0, 0.02, 0.9, 1.0],
+                    ).createShader(bounds);
+                  },
+                  blendMode: BlendMode.dstIn,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) {
+                      final isSelected = _selectedCategory == _categories[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: isSelected
+                            ? Container(
+                                decoration: BoxDecoration(
+                                  gradient: AppColors.primaryGradient,
                                   borderRadius: BorderRadius.circular(20),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
                                     ),
-                                    child: Text(
-                                      _categories[index],
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedCategory = _categories[index];
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 8,
+                                      ),
+                                      child: Text(
+                                        _categories[index],
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
+                              )
+                            : FilterChip(
+                                label: Text(_categories[index]),
+                                selected: false,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    _selectedCategory = _categories[index];
+                                  });
+                                },
+                                backgroundColor: Colors.grey.shade200,
+                                labelStyle: const TextStyle(
+                                  color: Colors.black87,
+                                ),
                               ),
-                            )
-                          : FilterChip(
-                              label: Text(_categories[index]),
-                              selected: false,
-                              onSelected: (selected) {
-                                setState(() {
-                                  _selectedCategory = _categories[index];
-                                });
-                              },
-                              backgroundColor: Colors.grey.shade200,
-                              labelStyle: const TextStyle(
-                                color: Colors.black87,
-                              ),
-                            ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
 
@@ -566,6 +1064,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildActivityCard(ActivityModel activity) {
     final isFull = activity.currentParticipants >= activity.maxParticipants;
     final isPast = activity.isPast;
+    final currentUser = ref.watch(currentUserProvider);
+    final isCreator = currentUser != null && activity.creatorId == currentUser.uid;
     
     return Opacity(
       opacity: isPast ? 0.6 : 1.0,
@@ -631,6 +1131,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                     ),
+                    // Creator Badge (if user is creator)
+                    if (isCreator)
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: AppColors.primaryGradient,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withOpacity(0.4),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.stars,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Organisateur',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     // Past Event Badge
                     if (isPast)
                       Positioned(
@@ -915,6 +1457,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             
                             // Active event logic
                             if (hasJoined) {
+                              // If user is creator, don't show leave button
+                              if (isCreator) {
+                                return ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ActivityDetailsScreen(activity: activity.toMap()),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.stars),
+                                  label: const Text('Gérer l\'événement'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                );
+                              }
+                              
                               return Row(
                                 children: [
                                   Expanded(
@@ -931,6 +1497,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         ),
                                       ),
                                     ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // 🔔 Notification Settings Button
+                                  IconButton(
+                                    onPressed: () => _showNotificationSettingsDialog(activity),
+                                    icon: const Icon(Icons.notifications_active),
+                                    style: IconButton.styleFrom(
+                                      foregroundColor: Colors.orange,
+                                      backgroundColor: Colors.orange.withOpacity(0.1),
+                                      padding: const EdgeInsets.all(12),
+                                    ),
+                                    tooltip: 'Paramètres de rappel',
                                   ),
                                   const SizedBox(width: 8),
                                   OutlinedButton(

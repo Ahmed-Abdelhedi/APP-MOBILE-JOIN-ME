@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/core/constants/app_colors.dart';
 import 'package:mobile/core/providers/theme_provider.dart';
 import 'package:mobile/core/providers/language_provider.dart';
+import 'package:mobile/core/services/notification_service.dart';
+import 'package:mobile/core/services/notification_preferences_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -15,6 +17,21 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _soundEffects = true;
   bool _vibration = true;
+  
+  // Notification preferences
+  final NotificationPreferencesService _notifPrefs = NotificationPreferencesService();
+  final NotificationService _notifService = NotificationService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationPreferences();
+  }
+
+  Future<void> _loadNotificationPreferences() async {
+    await _notifPrefs.initialize();
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +69,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showLanguageDialog(),
           ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.2, end: 0),
+
+          const SizedBox(height: 24),
+          _buildSection('🔔 Notifications'),
+          _buildNotificationSettings(),
 
           const SizedBox(height: 24),
           _buildSection('Sons et Vibrations'),
@@ -150,6 +171,169 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         subtitle: Text(subtitle),
         trailing: trailing,
+      ),
+    );
+  }
+
+  /// Build notification settings section
+  Widget _buildNotificationSettings() {
+    final prefs = _notifPrefs.preferences;
+    
+    return Column(
+      children: [
+        // Master toggle
+        _buildSettingCard(
+          'Notifications activées',
+          prefs.enabled ? 'Recevoir des rappels d\'événements' : 'Notifications désactivées',
+          Icons.notifications_active,
+          trailing: Switch(
+            value: prefs.enabled,
+            onChanged: (value) async {
+              await _notifPrefs.setEnabled(value);
+              if (value) {
+                await _notifService.rescheduleAllNotifications();
+              } else {
+                await _notifService.cancelAllNotifications();
+              }
+              setState(() {});
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(value 
+                        ? '🔔 Notifications activées' 
+                        : '🔕 Notifications désactivées'),
+                    backgroundColor: value ? Colors.green : Colors.orange,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            activeThumbColor: AppColors.primary,
+          ),
+        ).animate().fadeIn(delay: 250.ms).slideX(begin: -0.2, end: 0),
+
+        // Timing selector
+        if (prefs.enabled) ...[
+          _buildSettingCard(
+            'Rappel avant l\'événement',
+            NotificationPreferences.getTimingLabel(prefs.minutesBefore),
+            Icons.timer,
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showTimingDialog(),
+          ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.2, end: 0),
+
+          // Notify for participating
+          _buildSettingCard(
+            'Événements rejoints',
+            'Rappels pour les événements auxquels vous participez',
+            Icons.group,
+            trailing: Switch(
+              value: prefs.notifyForParticipating,
+              onChanged: (value) async {
+                await _notifPrefs.setNotifyForParticipating(value);
+                await _notifService.rescheduleAllNotifications();
+                setState(() {});
+              },
+              activeThumbColor: AppColors.primary,
+            ),
+          ).animate().fadeIn(delay: 350.ms).slideX(begin: -0.2, end: 0),
+
+          // Notify for interested
+          _buildSettingCard(
+            'Événements intéressants',
+            'Rappels pour les événements qui vous intéressent',
+            Icons.star,
+            trailing: Switch(
+              value: prefs.notifyForInterested,
+              onChanged: (value) async {
+                await _notifPrefs.setNotifyForInterested(value);
+                await _notifService.rescheduleAllNotifications();
+                setState(() {});
+              },
+              activeThumbColor: AppColors.primary,
+            ),
+          ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.2, end: 0),
+
+          // Sound
+          _buildSettingCard(
+            'Son des notifications',
+            prefs.soundEnabled ? 'Activé' : 'Désactivé',
+            Icons.volume_up,
+            trailing: Switch(
+              value: prefs.soundEnabled,
+              onChanged: (value) async {
+                await _notifPrefs.setSoundEnabled(value);
+                setState(() {});
+              },
+              activeThumbColor: AppColors.primary,
+            ),
+          ).animate().fadeIn(delay: 450.ms).slideX(begin: -0.2, end: 0),
+
+          // Vibration
+          _buildSettingCard(
+            'Vibration des notifications',
+            prefs.vibrationEnabled ? 'Activée' : 'Désactivée',
+            Icons.vibration,
+            trailing: Switch(
+              value: prefs.vibrationEnabled,
+              onChanged: (value) async {
+                await _notifPrefs.setVibrationEnabled(value);
+                setState(() {});
+              },
+              activeThumbColor: AppColors.primary,
+            ),
+          ).animate().fadeIn(delay: 500.ms).slideX(begin: -0.2, end: 0),
+        ],
+      ],
+    );
+  }
+
+  /// Show timing selection dialog
+  void _showTimingDialog() {
+    final currentMinutes = _notifPrefs.preferences.minutesBefore;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.timer, color: AppColors.primary),
+            const SizedBox(width: 8),
+            const Text('Rappel avant l\'événement'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: NotificationPreferences.timingOptions.map((minutes) {
+            return RadioListTile<int>(
+              value: minutes,
+              groupValue: currentMinutes,
+              title: Text(NotificationPreferences.getTimingLabel(minutes)),
+              activeColor: AppColors.primary,
+              onChanged: (value) async {
+                if (value != null) {
+                  await _notifPrefs.setMinutesBefore(value);
+                  await _notifService.rescheduleAllNotifications();
+                  setState(() {});
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('⏰ Rappel: ${NotificationPreferences.getTimingLabel(value)}'),
+                      backgroundColor: Colors.green,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+            );
+          }).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+        ],
       ),
     );
   }

@@ -52,9 +52,17 @@ class ActivityImageWidget extends StatelessWidget {
         },
       );
     } else if (assetPath != null && assetPath.isNotEmpty) {
-      // For predefined images, always show emoji placeholder
-      // (since actual asset files don't exist yet)
-      imageWidget = _buildAssetPlaceholder(context, assetPath);
+      // For predefined images, show the actual image asset
+      imageWidget = Image.asset(
+        assetPath,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback to placeholder if asset not found
+          return _buildAssetPlaceholder(context, assetPath);
+        },
+      );
     } else if (category != null && category.isNotEmpty) {
       // Fallback: use category to generate placeholder
       imageWidget = _buildCategoryPlaceholder(context, category);

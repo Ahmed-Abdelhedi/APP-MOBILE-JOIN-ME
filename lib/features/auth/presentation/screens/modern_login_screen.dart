@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/core/constants/app_colors.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_providers.dart';
 import '../../../activities/presentation/screens/home_screen.dart';
+import 'onboarding_screen.dart';
 
 class ModernLoginScreen extends ConsumerStatefulWidget {
   const ModernLoginScreen({super.key});
@@ -92,17 +93,31 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
       if (success) {
         _showSuccess(_isLogin ? 'Connexion réussie!' : 'Compte créé avec succès!');
         
+        print('🔵 _isLogin = $_isLogin'); // Debug log
+        
         // Attendre un peu pour que l'utilisateur voie le message
         await Future.delayed(const Duration(milliseconds: 500));
         
         if (!mounted) return;
         
-        // Navigation vers home
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const HomeScreen(),
-          ),
-        );
+        // Navigation: onboarding après sign up, home après login
+        if (_isLogin) {
+          // Connexion -> aller directement au home
+          print('🔵 Navigating to Home (login)');
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const HomeScreen(),
+            ),
+          );
+        } else {
+          // Inscription -> montrer l'onboarding d'abord
+          print('🔵 Navigating to Onboarding (signup)');
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const OnboardingScreen(),
+            ),
+          );
+        }
       } else {
         final errorMessage = authController.errorMessage ?? 'Erreur inconnue';
         _showError(errorMessage);

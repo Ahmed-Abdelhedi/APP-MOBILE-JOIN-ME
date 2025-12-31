@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:mobile/core/constants/app_colors.dart';
 import 'modern_login_screen.dart';
+import '../../../activities/presentation/screens/home_screen.dart';
 
 class OnboardingPage {
   final String title;
@@ -240,7 +241,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _navigateToLogin() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const ModernLoginScreen()),
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
     );
   }
 

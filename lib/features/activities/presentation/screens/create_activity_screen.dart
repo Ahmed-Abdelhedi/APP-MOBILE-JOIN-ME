@@ -11,7 +11,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class CreateActivityScreen extends ConsumerStatefulWidget {
-  const CreateActivityScreen({super.key});
+  final String? activityId;
+  final Map<String, dynamic>? activity;
+
+  const CreateActivityScreen({
+    super.key,
+    this.activityId,
+    this.activity,
+  });
 
   @override
   ConsumerState<CreateActivityScreen> createState() =>
@@ -43,14 +50,69 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    
+    // If editing an existing activity, populate the form
+    if (widget.activityId != null && widget.activity != null) {
+      _titleController.text = widget.activity!['title'] ?? '';
+      _descriptionController.text = widget.activity!['description'] ?? '';
+      _locationController.text = widget.activity!['location'] ?? '';
+      _priceController.text = widget.activity!['price']?.toString() ?? '';
+      _selectedCategory = widget.activity!['category'] ?? 'Sports';
+      _maxParticipants = widget.activity!['maxParticipants'] ?? 10;
+      
+      // Parse date and time
+      if (widget.activity!['dateTime'] != null) {
+        final dateTimeValue = widget.activity!['dateTime'];
+        final DateTime dateTime;
+        
+        // Check if it's a Timestamp or DateTime
+        if (dateTimeValue is Timestamp) {
+          dateTime = dateTimeValue.toDate();
+        } else if (dateTimeValue is DateTime) {
+          dateTime = dateTimeValue;
+        } else {
+          dateTime = DateTime.now();
+        }
+        
+        _selectedDate = dateTime;
+        _selectedTime = TimeOfDay.fromDateTime(dateTime);
+      }
+      
+      // Parse coordinates
+      if (widget.activity!['coordinates'] != null) {
+        final coords = widget.activity!['coordinates'] as Map<String, dynamic>;
+        _selectedCoordinates = LatLng(coords['latitude'], coords['longitude']);
+      }
+      
+      // Parse image
+      if (widget.activity!['imageUrl'] != null) {
+        _selectedImage = ImageSelectionResult(
+          imageUrl: widget.activity!['imageUrl'],
+        );
+      } else if (widget.activity!['imageAssetPath'] != null) {
+        _selectedImage = ImageSelectionResult(
+          assetPath: widget.activity!['imageAssetPath'],
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isEditing = widget.activityId != null;
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Créer une activité'),
+        title: Text(isEditing ? 'Modifier l\'activité' : 'Créer une activité'),
         actions: [
           TextButton(
             onPressed: _handleSubmit,
-            child: const Text('Publier'),
+            child: Text(
+              isEditing ? 'Enregistrer les modifications' : 'Publier l\'événement',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -223,31 +285,45 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
   }
 
   Future<void> _showLocationPicker() async {
-    final result = await Navigator.push<Map<String, dynamic>>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LocationPickerScreen(
-          initialLocation: _locationController.text.isNotEmpty 
-              ? _locationController.text 
-              : null,
-          initialCoordinates: _selectedCoordinates,
-        ),
-      ),
-    );
-
-    if (result != null && mounted) {
-      setState(() {
-        _locationController.text = result['address'] as String;
-        _selectedCoordinates = result['coordinates'] as LatLng;
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lieu sélectionné avec succès'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
+    try {
+      final result = await Navigator.push<Map<String, dynamic>>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LocationPickerScreen(
+            initialLocation: _locationController.text.isNotEmpty 
+                ? _locationController.text 
+                : null,
+            initialCoordinates: _selectedCoordinates,
+          ),
         ),
       );
+
+      if (result != null && mounted) {
+        setState(() {
+          _locationController.text = result['address']?.toString() ?? '';
+          if (result['coordinates'] != null) {
+            _selectedCoordinates = result['coordinates'] as LatLng;
+          }
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lieu sélectionné avec succès'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error in location picker: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la sélection du lieu: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -360,19 +436,30 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
   }
 
   Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    // Vérifier que les coordonnées sont définies
-    if (_selectedCoordinates == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez sélectionner un lieu'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+    final isEditing = widget.activityId != null;
+    
+    // En mode édition, la validation est plus souple
+    if (!isEditing) {
+      // En mode création, tous les champs sont obligatoires
+      if (!_formKey.currentState!.validate()) {
+        return;
+      }
+      
+      // Vérifier que les coordonnées sont définies
+      if (_selectedCoordinates == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Veuillez sélectionner un lieu'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    } else {
+      // En mode édition, au moins un champ doit avoir une valeur
+      if (_formKey.currentState!.validate()) {
+        // Validation OK, on continue
+      }
     }
 
     // Afficher le loading
@@ -400,123 +487,172 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
         _selectedTime.minute,
       );
 
-      // Créer l'activité dans Firestore
       final firestore = ref.read(firestoreProvider);
       
       // Prepare image data
       String? imageUrl;
       String? imageAssetPath;
       
-      // Handle image based on selection type
       if (_selectedImage != null && _selectedImage!.hasImage) {
         if (_selectedImage!.isAsset) {
-          // Use predefined asset path
           imageAssetPath = _selectedImage!.assetPath;
         } else if (_selectedImage!.needsUpload && _selectedImage!.imageFile != null) {
-          // Upload gallery image first (we'll update after getting the activity ID)
-          // For now, mark it as pending upload
+          // Mark as pending upload
         }
       }
       
-      final activityData = {
-        'title': _titleController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'category': _selectedCategory,
-        'location': _locationController.text.trim(),
-        'latitude': _selectedCoordinates!.latitude,
-        'longitude': _selectedCoordinates!.longitude,
-        'dateTime': Timestamp.fromDate(dateTime),
-        'maxParticipants': _maxParticipants,
-        'currentParticipants': 1, // Le créateur est le premier participant
-        'cost': _priceController.text.isEmpty 
+      // En mode édition, ne mettre à jour que les champs modifiés
+      final Map<String, dynamic> activityData = {};
+      
+      if (isEditing) {
+        // En mode édition : mettre à jour seulement les champs remplis
+        if (_titleController.text.trim().isNotEmpty) {
+          activityData['title'] = _titleController.text.trim();
+        }
+        if (_descriptionController.text.trim().isNotEmpty) {
+          activityData['description'] = _descriptionController.text.trim();
+        }
+        if (_locationController.text.trim().isNotEmpty) {
+          activityData['location'] = _locationController.text.trim();
+        }
+        if (_selectedCoordinates != null) {
+          activityData['latitude'] = _selectedCoordinates!.latitude;
+          activityData['longitude'] = _selectedCoordinates!.longitude;
+        }
+        activityData['category'] = _selectedCategory;
+        activityData['dateTime'] = Timestamp.fromDate(dateTime);
+        activityData['maxParticipants'] = _maxParticipants;
+        if (_priceController.text.isNotEmpty) {
+          activityData['cost'] = double.tryParse(_priceController.text);
+        }
+        if (imageUrl != null) activityData['imageUrl'] = imageUrl;
+        if (imageAssetPath != null) activityData['imageAssetPath'] = imageAssetPath;
+      } else {
+        // En mode création : tous les champs sont requis
+        activityData['title'] = _titleController.text.trim();
+        activityData['description'] = _descriptionController.text.trim();
+        activityData['category'] = _selectedCategory;
+        activityData['location'] = _locationController.text.trim();
+        activityData['latitude'] = _selectedCoordinates!.latitude;
+        activityData['longitude'] = _selectedCoordinates!.longitude;
+        activityData['dateTime'] = Timestamp.fromDate(dateTime);
+        activityData['maxParticipants'] = _maxParticipants;
+        activityData['cost'] = _priceController.text.isEmpty 
             ? null 
-            : double.tryParse(_priceController.text),
-        'imageUrl': imageUrl, // Will be updated after upload if needed
-        'imageAssetPath': imageAssetPath, // Store asset path for predefined images
-        'creatorId': currentUser.uid,
-        'creatorName': currentUser.displayName ?? currentUser.email ?? 'Utilisateur',
-        'participants': [currentUser.uid], // Le créateur est automatiquement participant
-        'createdAt': FieldValue.serverTimestamp(),
-        'status': 'upcoming',
-      };
+            : double.tryParse(_priceController.text);
+        activityData['imageUrl'] = imageUrl;
+        activityData['imageAssetPath'] = imageAssetPath;
+      }
 
-      final activityDocRef = await firestore.collection('activities').add(activityData);
-      final newActivityId = activityDocRef.id;
-
-      // Upload gallery image to Firebase Storage if needed
-      if (_selectedImage != null && _selectedImage!.needsUpload && _selectedImage!.imageFile != null) {
-        try {
-          final activityService = ref.read(activityServiceProvider);
-          final uploadedImageUrl = await activityService.uploadActivityImage(
-            _selectedImage!.imageFile!,
-            newActivityId,
-          );
-          
-          // Update activity with uploaded image URL
-          await activityService.updateActivityImage(newActivityId, uploadedImageUrl);
-          print('✅ Image uploaded and activity updated with URL: $uploadedImageUrl');
-        } catch (uploadError) {
-          print('❌ Error uploading image: $uploadError');
-          // Don't block activity creation if image upload fails
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('⚠️ Image non téléchargée: ${uploadError.toString()}'),
-                backgroundColor: Colors.orange,
-              ),
-            );
+      if (isEditing) {
+        // UPDATE existing activity
+        await firestore.collection('activities').doc(widget.activityId).update(activityData);
+        
+        // Notify all participants about the change
+        final activityDoc = await firestore.collection('activities').doc(widget.activityId).get();
+        final participants = List<String>.from(activityDoc.data()?['participants'] ?? []);
+        final activityTitle = _titleController.text.trim();
+        
+        for (final participantId in participants) {
+          if (participantId != currentUser.uid) {
+            await firestore
+                .collection('users')
+                .doc(participantId)
+                .collection('notifications')
+                .add({
+              'type': 'event_updated',
+              'title': 'Événement modifié',
+              'body': 'L\'événement "$activityTitle" a été mis à jour par l\'organisateur.',
+              'activityId': widget.activityId,
+              'activityTitle': activityTitle,
+              'read': false,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
           }
         }
-      }
 
-      // Fermer le loading
-      if (mounted) Navigator.of(context).pop();
+        // Upload image if needed
+        if (_selectedImage != null && _selectedImage!.needsUpload && _selectedImage!.imageFile != null) {
+          try {
+            final activityService = ref.read(activityServiceProvider);
+            final uploadedImageUrl = await activityService.uploadActivityImage(
+              _selectedImage!.imageFile!,
+              widget.activityId!,
+            );
+            await activityService.updateActivityImage(widget.activityId!, uploadedImageUrl);
+          } catch (uploadError) {
+            print('❌ Error uploading image: $uploadError');
+          }
+        }
 
-      // Créer un chat pour cette activité
-      try {
-        print('🔄 Tentative création chat pour activité: $newActivityId');
-        print('📝 Titre: ${_titleController.text.trim()}');
-        print('👤 Creator: ${currentUser.uid} - ${currentUser.displayName ?? currentUser.email}');
+        if (mounted) Navigator.of(context).pop();
         
-        final chatService = ref.read(chatServiceProvider);
-        final chatId = await chatService.createChatForActivity(
-          activityId: newActivityId,
-          activityTitle: _titleController.text.trim(),
-          creatorId: currentUser.uid,
-          creatorName: currentUser.displayName ?? currentUser.email ?? 'Utilisateur',
-        );
-        print('✅ Chat créé avec succès! ID: $chatId pour activité: $newActivityId');
-      } catch (chatError) {
-        print('❌ ERREUR CRÉATION CHAT: $chatError');
-        print('📍 ActivityId: $newActivityId');
-        // Ne pas bloquer si le chat échoue, mais afficher un warning
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('⚠️ Chat non créé: ${chatError.toString()}'),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 5),
+            const SnackBar(
+              content: Text('✅ Événement modifié avec succès'),
+              backgroundColor: Colors.green,
             ),
           );
+          Navigator.of(context).pop(true); // Return true to indicate success
         }
-      }
+      } else {
+        // CREATE new activity
+        activityData['currentParticipants'] = 1;
+        activityData['creatorId'] = currentUser.uid;
+        activityData['creatorName'] = currentUser.displayName ?? currentUser.email ?? 'Utilisateur';
+        activityData['participants'] = [currentUser.uid];
+        activityData['createdAt'] = FieldValue.serverTimestamp();
+        activityData['status'] = 'upcoming';
 
-      // Afficher message de succès
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Activité créée avec succès !'),
-              ],
+        final activityDocRef = await firestore.collection('activities').add(activityData);
+        final newActivityId = activityDocRef.id;
+
+        // Upload image if needed
+        if (_selectedImage != null && _selectedImage!.needsUpload && _selectedImage!.imageFile != null) {
+          try {
+            final activityService = ref.read(activityServiceProvider);
+            final uploadedImageUrl = await activityService.uploadActivityImage(
+              _selectedImage!.imageFile!,
+              newActivityId,
+            );
+            await activityService.updateActivityImage(newActivityId, uploadedImageUrl);
+          } catch (uploadError) {
+            print('❌ Error uploading image: $uploadError');
+          }
+        }
+
+        if (mounted) Navigator.of(context).pop();
+
+        // Create chat
+        try {
+          final chatService = ref.read(chatServiceProvider);
+          await chatService.createChatForActivity(
+            activityId: newActivityId,
+            activityTitle: _titleController.text.trim(),
+            creatorId: currentUser.uid,
+            creatorName: currentUser.displayName ?? currentUser.email ?? 'Utilisateur',
+          );
+        } catch (chatError) {
+          print('❌ ERREUR CRÉATION CHAT: $chatError');
+        }
+
+        // Afficher message de succès
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('Activité créée avec succès !'),
+                ],
+              ),
+              backgroundColor: Colors.green,
             ),
-            backgroundColor: Colors.green,
-          ),
-        );
-        // Retourner à l'écran précédent
-        Navigator.of(context).pop();
+          );
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       // Fermer le loading

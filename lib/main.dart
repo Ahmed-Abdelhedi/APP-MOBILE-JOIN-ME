@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:mobile/core/theme/app_theme.dart';
 import 'package:mobile/core/providers/theme_provider.dart';
+import 'package:mobile/core/services/notification_service.dart';
 import 'package:mobile/features/auth/presentation/screens/splash_screen.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
@@ -27,6 +28,11 @@ void main() async {
   
   // Initialiser la locale française pour le formatage des dates
   await initializeDateFormatting('fr_FR', null);
+  
+  // Initialiser le service de notifications locales
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+  print('✅ NotificationService initialisé dans main.dart');
   
   // Configurer les notifications en arrière-plan
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);

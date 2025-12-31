@@ -51,16 +51,21 @@ class AppColors {
   // Category Colors
   static const Map<String, Color> categoryColors = {
     'sport': Color(0xFFFF6348),
+    'sports': Color(0xFFFF6348),
     'football': Color(0xFF2ECC71),
     'gym': Color(0xFFE74C3C),
+    'fitness': Color(0xFFE74C3C),
     'cafe': Color(0xFF8E44AD),
     'cinema': Color(0xFFF39C12),
     'music': Color(0xFF3498DB),
     'gaming': Color(0xFF9B59B6),
     'food': Color(0xFFE67E22),
     'art': Color(0xFF1ABC9C),
+    'culture': Color(0xFF1ABC9C),
     'study': Color(0xFF34495E),
+    'nature': Color(0xFF27AE60),
     'other': Color(0xFF95A5A6),
+    'tout': Color(0xFF7C3AED),
   };
   
   // Gradient Colors
@@ -87,4 +92,35 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+  
+  // Success Gradient (for join feedback)
+  static const Gradient successGradient = LinearGradient(
+    colors: [Color(0xFF00B894), Color(0xFF10B981)], // Green shades
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  
+  // Error Gradient (for error feedback)
+  static const Gradient errorGradient = LinearGradient(
+    colors: [Color(0xFFFF7675), Color(0xFFE74C3C)], // Red shades
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  
+  /// Get color for a category with fallback
+  static Color getCategoryColor(String category) {
+    return categoryColors[category.toLowerCase()] ?? primary;
+  }
+  
+  /// Get gradient for a category
+  static LinearGradient getCategoryGradient(String category) {
+    final color = getCategoryColor(category);
+    final hsl = HSLColor.fromColor(color);
+    final lighterColor = hsl.withLightness((hsl.lightness + 0.1).clamp(0.0, 1.0)).toColor();
+    return LinearGradient(
+      colors: [color, lighterColor],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+  }
 }
