@@ -148,13 +148,3 @@ L'application communique avec Firebase via les SDK officiels :
 
 ---
 
-## 👥 Équipe
-
-- [Ajouter les noms des membres de l'équipe]
-
----
-
-## 📄 License
-
-Projet académique - ENSA 2025/2026
-
