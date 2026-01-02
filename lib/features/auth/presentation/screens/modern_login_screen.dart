@@ -347,7 +347,7 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Bouton retour (seulement en mode Sign Up)
+                // Top Row: Back button (if signup)
                 if (!_isLogin)
                   IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -363,33 +363,72 @@ class _ModernLoginScreenState extends ConsumerState<ModernLoginScreen> {
                 
                 const SizedBox(height: 20),
 
-                // Welcome Text
-                Text(
-                  _isLogin ? 'Welcome Back' : 'Create Account',
-                  style: const TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                // Welcome Text with Logo
+                Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Left side: Welcome text and subtitle
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _isLogin ? 'Welcome Back' : 'Create Account',
+                              style: const TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            )
+                                .animate()
+                                .fadeIn(duration: 600.ms)
+                                .slideX(begin: -0.2, end: 0),
+                            
+                            const SizedBox(height: 4),
+                            
+                            Text(
+                              _isLogin
+                                  ? 'Sign in to continue'
+                                  : 'Fill the form to get started',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white.withOpacity(0.8),
+                              ),
+                            )
+                                .animate()
+                                .fadeIn(delay: 200.ms, duration: 600.ms)
+                                .slideX(begin: -0.2, end: 0),
+                          ],
+                        ),
+                      ),
+                      
+                      // Logo next to welcome text
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Image.asset(
+                          'assets/images/joinmelogo.png',
+                          width: 70,
+                          height: 70,
+                          fit: BoxFit.contain,
+                        ),
+                      )
+                          .animate()
+                          .fadeIn(duration: 600.ms)
+                          .scale(delay: 200.ms, duration: 400.ms),
+                    ],
                   ),
-                )
-                    .animate()
-                    .fadeIn(duration: 600.ms)
-                    .slideX(begin: -0.2, end: 0),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  _isLogin
-                      ? 'Sign in to continue'
-                      : 'Fill the form to get started',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                )
-                    .animate()
-                    .fadeIn(delay: 200.ms, duration: 600.ms)
-                    .slideX(begin: -0.2, end: 0),
+                ),
 
                 const SizedBox(height: 60),
 

@@ -44,17 +44,22 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo Icon
+              // Logo Image
               Container(
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(32),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1.5,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.people_alt_rounded,
-                  size: 80,
-                  color: Colors.white,
+                child: Image.asset(
+                  'assets/images/joinmelogo.png',
+                  width: 160,
+                  height: 160,
+                  fit: BoxFit.contain,
                 ),
               )
                   .animate()
@@ -64,22 +69,6 @@ class _SplashScreenState extends State<SplashScreen> {
                   .shimmer(duration: 1500.ms),
 
               const SizedBox(height: 32),
-
-              // App Name
-              const Text(
-                'JoinMe',
-                style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 2,
-                ),
-              )
-                  .animate()
-                  .fadeIn(delay: 400.ms, duration: 600.ms)
-                  .slideY(begin: 0.3, end: 0),
-
-              const SizedBox(height: 12),
 
               // Tagline
               Text(

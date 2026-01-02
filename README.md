@@ -1,113 +1,160 @@
-# JoinMe - Frontend Mobile
+# JoinMe - Application Mobile Flutter
 
-Application Flutter mobile pour rejoindre des activités locales.
+Application mobile permettant aux utilisateurs de découvrir et rejoindre des activités locales.
 
-## 🚀 Installation
+## 📱 Présentation du Projet
+
+**JoinMe** est une application mobile qui connecte les personnes partageant les mêmes centres d'intérêt en leur permettant de :
+- Découvrir des activités locales (sports, culture, gaming, food, etc.)
+- Créer et organiser leurs propres événements
+- Rejoindre des groupes et communiquer via chat en temps réel
+- Localiser les activités sur une carte interactive
+
+---
+
+## 🛠️ Technologies Utilisées
+
+### Frontend
+| Technologie | Utilisation |
+|-------------|-------------|
+| **Flutter** | Framework de développement mobile cross-platform |
+| **Dart** | Langage de programmation |
+| **Riverpod** | Gestion d'état (State Management) |
+| **GoRouter** | Navigation et routing |
+| **Flutter Map** | Carte interactive OpenStreetMap |
+
+### Backend (Firebase)
+| Service | Utilisation |
+|---------|-------------|
+| **Firebase Auth** | Authentification (Email/Password + Google Sign-In) |
+| **Cloud Firestore** | Base de données NoSQL temps réel |
+| **Firebase Storage** | Stockage des images (avatars, événements) |
+| **Firebase Messaging** | Notifications push |
+
+### Architecture
+- **Clean Architecture** avec séparation en couches (data, domain, presentation)
+- **Feature-based** structure pour une meilleure organisation du code
+
+---
+
+## 🚀 Installation et Exécution
 
 ### Prérequis
-
 - Flutter SDK (3.10.1+)
 - Dart SDK (3.0.0+)
-- Firebase CLI
-- Compte Firebase (projet: join-me-mobile)
-- Dart SDK (3.10.1 or higher)
-- Android Studio / VS Code
-- Firebase account
-- Google Maps API key (for map features)
+- Android Studio ou VS Code
+- Un appareil Android ou émulateur
 
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd mobile
-   ```
-
-2. **Install dependencies**
-   ```bash
-   flutter pub get
-   ```
-
-3. **Configure Firebase**
-   
-   #### For Android:
-   - Create a new Firebase project at [Firebase Console](https://console.firebase.google.com/)
-   - Add an Android app
-   - Download `google-services.json`
-   - Place it in `android/app/`
-   
-   #### For iOS:
-   - Add an iOS app in Firebase Console
-   - Download `GoogleService-Info.plist`
-   - Place it in `ios/Runner/`
-
-4. **Enable Firebase Services**
-   
-   In Firebase Console, enable:
-   - Authentication (Email/Password & Google)
-   - Cloud Firestore
-   - Firebase Storage
-
-### Configuration Firebase
-
-⚠️ **NOUVEAUX DÉVELOPPEURS** : Consultez d'abord [SETUP_POUR_NOUVEAUX_DEVELOPPEURS.md](SETUP_POUR_NOUVEAUX_DEVELOPPEURS.md)
-
-#### Configuration rapide (après clonage)
-
-**1. Script automatique (RECOMMANDÉ) :**
-```bash
-# Windows PowerShell
-.\setup.ps1
-
-# macOS/Linux
-chmod +x setup.sh
-./setup.sh
-```
-
-**2. Obtenir les fichiers Firebase :**
-- Demander `google-services.json` au chef de projet
-- Le placer dans `android/app/`
-
-**3. Lancer l'app :**
-```bash
-flutter run
-```
-
-#### Configuration complète Firebase CLI (optionnel)
+### Étapes d'installation
 
 ```bash
-# 1. Installer Firebase CLI
-npm install -g firebase-tools
+# 1. Cloner le repository
+git clone <url-du-repo>
+cd mobile
 
-# 2. Se connecter à Firebase
-firebase login
-
-# 3. Configurer le projet
-flutterfire configure --project=join-me-mobile
-
-# 4. Installer les dépendances
+# 2. Installer les dépendances
 flutter pub get
 
-# 5. Lancer l'app
+# 3. Lancer l'application
 flutter run
 ```
 
-## 📱 Fonctionnalités
+### Générer l'APK
+```bash
+flutter build apk --release
+```
+L'APK sera généré dans : `build/app/outputs/flutter-apk/app-release.apk`
 
-- **Auth**: Connexion, inscription, Google Sign-In
-- **Activités**: Découvrir et rejoindre des activités locales  
-- **Chat**: Messagerie en temps réel par activité
-- **Map**: Carte interactive avec activités géolocalisées
-- **Profil**: Gestion du profil utilisateur
+---
 
-## 🏗️ Architecture
+## 📁 Structure du Projet
 
-- **State Management**: Riverpod
-- **Backend**: Firebase (Auth, Firestore, Storage, Messaging)
-- **Structure**: Clean Architecture avec features
+```
+lib/
+├── main.dart                 # Point d'entrée de l'application
+├── firebase_options.dart     # Configuration Firebase
+├── core/                     # Éléments partagés (constants, providers, utils)
+│   ├── constants/            # Couleurs, thèmes, dimensions
+│   ├── providers/            # Providers globaux (Firebase, etc.)
+│   └── utils/                # Utilitaires (formatters, validators)
+├── features/                 # Fonctionnalités par module
+│   ├── auth/                 # Authentification
+│   │   ├── data/             # Datasources, repositories impl
+│   │   ├── domain/           # Entities, repositories interfaces
+│   │   └── presentation/     # Screens, widgets, providers
+│   ├── activities/           # Gestion des activités
+│   ├── chat/                 # Messagerie temps réel
+│   ├── map/                  # Carte interactive
+│   └── profile/              # Profil utilisateur
+└── shared/                   # Composants réutilisables
+```
 
-## 🔗 Backend
+---
 
-Le backend Firebase (Cloud Functions, Security Rules) est dans un projet séparé.
-Ce frontend se connecte directement aux services Firebase via les providers.
+## 📱 Fonctionnalités Implémentées (MVP)
+
+### ✅ Authentification
+- Inscription / Connexion par email
+- Connexion avec Google (Google Sign-In)
+- Déconnexion et gestion de session
+
+### ✅ Activités
+- Liste des activités avec filtres par catégorie
+- Création d'une nouvelle activité
+- Détail d'une activité (description, participants, date, lieu)
+- Rejoindre / Quitter une activité
+
+### ✅ Chat
+- Messagerie en temps réel par activité
+- Envoi de messages texte
+- Historique des conversations
+
+### ✅ Carte
+- Visualisation des activités sur une carte
+- Géolocalisation de l'utilisateur
+- Navigation vers le détail d'une activité
+
+### ✅ Profil
+- Affichage et modification du profil
+- Changement d'avatar
+- Historique des activités rejointes
+
+---
+
+## 🔗 Connexion Frontend ↔ Backend
+
+```
+┌─────────────────┐         ┌─────────────────────────┐
+│                 │         │       FIREBASE          │
+│   FLUTTER APP   │ ◄─────► │                         │
+│   (Frontend)    │         │  ┌─────────────────┐    │
+│                 │         │  │  Firebase Auth  │    │
+│  ┌───────────┐  │         │  └─────────────────┘    │
+│  │ Providers │──┼─────────┼──►                      │
+│  └───────────┘  │         │  ┌─────────────────┐    │
+│                 │         │  │ Cloud Firestore │    │
+│  ┌───────────┐  │         │  └─────────────────┘    │
+│  │  Screens  │  │         │                         │
+│  └───────────┘  │         │  ┌─────────────────┐    │
+│                 │         │  │ Firebase Storage│    │
+└─────────────────┘         │  └─────────────────┘    │
+                            └─────────────────────────┘
+```
+
+L'application communique avec Firebase via les SDK officiels :
+- **FirebaseAuth** : Gestion des utilisateurs
+- **FirebaseFirestore** : Lecture/écriture des données (activités, messages, profils)
+- **FirebaseStorage** : Upload/download des images
+
+---
+
+## 👥 Équipe
+
+- [Ajouter les noms des membres de l'équipe]
+
+---
+
+## 📄 License
+
+Projet académique - ENSA 2025/2026
 

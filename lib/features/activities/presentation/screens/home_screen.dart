@@ -667,7 +667,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   });
                 },
               )
-            : null,
+            : Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Image.asset(
+                  'assets/images/joinmelogo_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
         actions: [
           if (!_showSearch) ...[
             // Notification button with badge
