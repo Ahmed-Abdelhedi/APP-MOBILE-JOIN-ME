@@ -15,6 +15,7 @@ class UserService {
     String? name,
     String? bio,
     String? phoneNumber,
+    String? photoUrl,
     List<String>? interests,
   }) async {
     final user = currentUser;
@@ -29,6 +30,11 @@ class UserService {
     }
     if (bio != null) updates['bio'] = bio;
     if (phoneNumber != null) updates['phoneNumber'] = phoneNumber;
+    if (photoUrl != null) {
+      updates['photoUrl'] = photoUrl;
+      // Mettre à jour aussi dans Firebase Auth
+      await user.updatePhotoURL(photoUrl);
+    }
     if (interests != null) updates['interests'] = interests;
     
     updates['updatedAt'] = FieldValue.serverTimestamp();

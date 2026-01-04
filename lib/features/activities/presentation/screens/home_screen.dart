@@ -33,6 +33,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String _searchQuery = '';
   bool _showSearch = false;
   
+  // ScrollController for scrolling to top when logo is clicked
+  final ScrollController _scrollController = ScrollController();
+  
   // Advanced filters
   String _selectedTimePeriod = 'Tout';
   double _maxDistance = 50.0; // km
@@ -630,12 +633,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     // Charger les activités depuis Firebase
     final activitiesStream = ref.watch(activitiesStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: false,
         title: _showSearch
             ? TextField(
                 controller: _searchController,
@@ -653,7 +664,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 },
               )
             : const Text(
-                'Activités près de vous',
+                'Activités',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
         leading: _showSearch
@@ -667,11 +678,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   });
                 },
               )
-            : Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Image.asset(
-                  'assets/images/joinmelogo_icon.png',
-                  fit: BoxFit.contain,
+            : GestureDetector(
+                onTap: () {
+                  // Scroll to top when logo is clicked
+                  if (_scrollController.hasClients) {
+                    _scrollController.animateTo(
+                      0,
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutCubic,
+                    );
+                  }
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Image.asset(
+                    'assets/images/joinmelogo_icon.png',
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
         actions: [
@@ -980,6 +1003,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       )
                     : ListView.builder(
+                        controller: _scrollController,
                         padding: const EdgeInsets.all(16),
                         itemCount: filteredActivities.length,
                         itemBuilder: (context, index) {

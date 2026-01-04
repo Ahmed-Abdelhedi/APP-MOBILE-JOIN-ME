@@ -19,6 +19,18 @@ class ImageSelectionResult {
   bool get isAsset => assetPath != null;
   bool get isUploaded => imageUrl != null;
   bool get needsUpload => imageFile != null && imageUrl == null;
+  
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ImageSelectionResult &&
+        other.imageUrl == imageUrl &&
+        other.assetPath == assetPath &&
+        other.imageFile?.path == imageFile?.path;
+  }
+
+  @override
+  int get hashCode => Object.hash(imageUrl, assetPath, imageFile?.path);
 }
 
 /// Widget for selecting event images (gallery or predefined)
@@ -56,13 +68,24 @@ class _EventImagePickerState extends State<EventImagePicker> {
       );
 
       if (image != null) {
+        final file = File(image.path);
+        debugPrint('📷 Image picked from gallery: ${image.path}');
+        debugPrint('📷 File exists: ${file.existsSync()}');
+        
         final result = ImageSelectionResult(
-          imageFile: File(image.path),
+          imageFile: file,
         );
-        setState(() => _selectedImage = result);
-        widget.onImageSelected(result);
+        
+        if (mounted) {
+          setState(() {
+            _selectedImage = result;
+          });
+          widget.onImageSelected(result);
+          debugPrint('📷 Image selection updated, hasImage: ${_selectedImage?.hasImage}');
+        }
       }
     } catch (e) {
+      debugPrint('❌ Error picking image from gallery: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -247,7 +270,10 @@ class _EventImagePickerState extends State<EventImagePicker> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🔄 EventImagePicker build - hasImage: ${_selectedImage?.hasImage}, imageFile: ${_selectedImage?.imageFile?.path}');
+    
     return Container(
+      key: ValueKey(_selectedImage?.imageFile?.path ?? _selectedImage?.assetPath ?? _selectedImage?.imageUrl ?? 'empty'),
       height: 220,
       decoration: BoxDecoration(
         color: Colors.grey[100],
@@ -314,12 +340,23 @@ class _EventImagePickerState extends State<EventImagePicker> {
   }
 
   Widget _buildImageWidget() {
+    debugPrint('🖼️ _buildImageWidget called - imageFile: ${_selectedImage?.imageFile}, assetPath: ${_selectedImage?.assetPath}, imageUrl: ${_selectedImage?.imageUrl}');
+    
     if (_selectedImage?.imageFile != null) {
+      debugPrint('🖼️ Rendering Image.file with path: ${_selectedImage!.imageFile!.path}');
       return Image.file(
         _selectedImage!.imageFile!,
+        key: ValueKey(_selectedImage!.imageFile!.path),
         fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('❌ Error loading file image: $error');
+          return _buildPlaceholder();
+        },
       );
     } else if (_selectedImage?.assetPath != null) {
+      debugPrint('🖼️ Rendering Image.asset');
       return Image.asset(
         _selectedImage!.assetPath!,
         fit: BoxFit.cover,

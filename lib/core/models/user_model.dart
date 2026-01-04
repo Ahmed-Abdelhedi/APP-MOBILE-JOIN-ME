@@ -13,6 +13,7 @@ class UserModel {
   final DateTime? lastSeen;
   final String? fcmToken;
   final List<String> favorites; // IDs des activités favorites
+  final List<String> hiddenConversations; // IDs des conversations cachées
 
   UserModel({
     required this.uid,
@@ -26,6 +27,7 @@ class UserModel {
     this.lastSeen,
     this.fcmToken,
     this.favorites = const [],
+    this.hiddenConversations = const [],
   });
 
   /// Création depuis Firestore
@@ -42,6 +44,7 @@ class UserModel {
       lastSeen: data['lastSeen']?.toDate(),
       fcmToken: data['fcmToken'],
       favorites: List<String>.from(data['favorites'] ?? []),
+      hiddenConversations: List<String>.from(data['hiddenConversations'] ?? []),
     );
   }
 
@@ -59,6 +62,7 @@ class UserModel {
       'lastSeen': lastSeen != null ? Timestamp.fromDate(lastSeen!) : null,
       'favorites': favorites,
       'fcmToken': fcmToken,
+      'hiddenConversations': hiddenConversations,
     };
   }
 
@@ -72,6 +76,7 @@ class UserModel {
     DateTime? lastSeen,
     String? fcmToken,
     List<String>? favorites,
+    List<String>? hiddenConversations,
   }) {
     return UserModel(
       uid: uid,
@@ -85,6 +90,7 @@ class UserModel {
       lastSeen: lastSeen ?? this.lastSeen,
       fcmToken: fcmToken ?? this.fcmToken,
       favorites: favorites ?? this.favorites,
+      hiddenConversations: hiddenConversations ?? this.hiddenConversations,
     );
   }
 }

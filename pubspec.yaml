@@ -75,10 +75,21 @@ dev_dependencies:
 
   flutter_lints: ^6.0.0
   
+  # Launcher Icons
+  flutter_launcher_icons: ^0.14.1
+  
   # Code generation
   build_runner: ^2.4.13
   riverpod_generator: ^2.6.2
   json_serializable: ^6.8.0
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/joinmelogo_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/joinmelogo_icon.png"
+  remove_alpha_ios: true
 
 flutter:
   uses-material-design: true
@@ -86,5 +97,6 @@ flutter:
   assets:
     - assets/images/
     - assets/images/events/
+    - assets/images/avatars/
     - assets/icons/
     - assets/animations/

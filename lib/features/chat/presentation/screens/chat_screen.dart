@@ -91,6 +91,63 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  /// Leave a conversation for an ended event (hides it only for current user)
+  Future<void> _leaveConversation(ActivityModel activity) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer la conversation'),
+        content: Text(
+          'Voulez-vous supprimer la conversation "${activity.title}" de votre liste de messages ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      try {
+        final user = ref.read(currentUserProvider);
+        if (user == null) return;
+        
+        final firestore = ref.read(firestoreProvider);
+        
+        // Add the activity ID to the user's hiddenConversations list
+        await firestore.collection('users').doc(user.uid).update({
+          'hiddenConversations': FieldValue.arrayUnion([activity.id]),
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Conversation supprimée'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final joinedActivitiesAsync = ref.watch(userJoinedActivitiesProvider);
@@ -123,6 +180,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
       ),
       data: (joinedActivities) {
+        // Get hidden conversations from user profile
+        final userProfileAsync = ref.watch(currentUserProfileProvider);
+        final hiddenConversations = userProfileAsync.when(
+          data: (profile) => profile?.hiddenConversations ?? [],
+          loading: () => <String>[],
+          error: (_, __) => <String>[],
+        );
+        
+        // Filter out hidden conversations
+        final visibleActivities = joinedActivities
+            .where((activity) => !hiddenConversations.contains(activity.id))
+            .toList();
+        
+        // Sort: upcoming events first, then ended events
+        visibleActivities.sort((a, b) {
+          // Upcoming events (not past) come first
+          if (!a.isPast && b.isPast) return -1;
+          if (a.isPast && !b.isPast) return 1;
+          // Within same category, sort by date (newest first for upcoming, oldest first for past)
+          if (!a.isPast && !b.isPast) {
+            return a.dateTime.compareTo(b.dateTime); // Upcoming: soonest first
+          }
+          return b.dateTime.compareTo(a.dateTime); // Past: most recent first
+        });
+        
         return Scaffold(
           extendBodyBehindAppBar: true,
           appBar: AppBar(
@@ -198,15 +280,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
                 // Content
                 SafeArea(
-                  child: joinedActivities.isEmpty
+                  child: visibleActivities.isEmpty
                       ? _buildEmptyState()
                       : Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: ListView.builder(
                             padding: const EdgeInsets.only(top: 16, bottom: 16),
-                            itemCount: joinedActivities.length,
+                            itemCount: visibleActivities.length,
                             itemBuilder: (context, index) {
-                              final activity = joinedActivities[index];
+                              final activity = visibleActivities[index];
                               return _buildConversationCard(activity, index);
                             },
                           ),
@@ -269,13 +351,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   // Build modern conversation card matching reference UI
   Widget _buildConversationCard(ActivityModel activity, int index) {
     final unreadCount = 0; // TODO: Integrate with real unread message count
+    final isEnded = activity.isPast; // Check if event has ended
     
-    return AnimatedContainer(
+    Widget card = AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
       margin: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: Colors.white.withOpacity(0.9),
+        color: isEnded ? Colors.grey.shade100.withOpacity(0.9) : Colors.white.withOpacity(0.9),
         borderRadius: BorderRadius.circular(16),
         elevation: 0,
         child: InkWell(
@@ -289,12 +372,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             );
           },
+          onLongPress: isEnded ? () => _leaveConversation(activity) : null,
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Colors.white.withOpacity(0.5),
+                color: isEnded ? Colors.grey.shade300 : Colors.white.withOpacity(0.5),
                 width: 1,
               ),
               boxShadow: [
@@ -317,7 +401,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.2),
+                            color: isEnded 
+                                ? Colors.grey.withOpacity(0.2)
+                                : AppColors.primary.withOpacity(0.2),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -325,9 +411,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: activity.imageUrl != null && activity.imageUrl!.isNotEmpty
-                            ? Image.network(
-                                activity.imageUrl!,
+                        child: ColorFiltered(
+                          colorFilter: isEnded 
+                              ? ColorFilter.mode(Colors.grey.shade400, BlendMode.saturation)
+                              : const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+                          child: activity.imageUrl != null && activity.imageUrl!.isNotEmpty
+                              ? Image.network(
+                                  activity.imageUrl!,
                                 width: 56,
                                 height: 56,
                                 fit: BoxFit.cover,
@@ -394,8 +484,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                       size: 24,
                                     ),
                                   ),
+                        ),
                       ),
                     ),
+                    // Badge for ended events
+                    if (isEnded)
+                      Positioned(
+                        bottom: -2,
+                        right: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade600,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.lock,
+                            color: Colors.white,
+                            size: 10,
+                          ),
+                        ),
+                      ),
                     if (unreadCount > 0)
                       Positioned(
                         top: -4,
@@ -464,10 +574,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Appuyez pour ouvrir le chat',
+                        isEnded 
+                            ? '🔒 Événement terminé - Appui long pour supprimer'
+                            : 'Appuyez pour ouvrir le chat',
                         style: TextStyle(
                           fontSize: 14,
-                          color: unreadCount > 0 ? const Color(0xFF7C4DFF) : Colors.grey[500],
+                          color: isEnded 
+                              ? Colors.grey.shade600
+                              : (unreadCount > 0 ? const Color(0xFF7C4DFF) : Colors.grey[500]),
                           fontWeight: unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
                         ),
                         maxLines: 1,
@@ -477,18 +591,101 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Chevron
-                Icon(
-                  Icons.chevron_right,
-                  color: unreadCount > 0 ? const Color(0xFF7C4DFF) : Colors.grey[400],
-                  size: 20,
-                ),
+                // Delete button for ended events or chevron
+                if (isEnded)
+                  IconButton(
+                    onPressed: () => _leaveConversation(activity),
+                    icon: const Icon(Icons.delete_outline),
+                    color: Colors.red.shade400,
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.red.shade50,
+                    ),
+                    tooltip: 'Supprimer la conversation',
+                  )
+                else
+                  Icon(
+                    Icons.chevron_right,
+                    color: unreadCount > 0 ? const Color(0xFF7C4DFF) : Colors.grey[400],
+                    size: 20,
+                  ),
               ],
             ),
           ),
         ),
       ),
     );
+    
+    // Wrap with Dismissible for swipe-to-delete on ended events
+    if (isEnded) {
+      return Dismissible(
+        key: Key('conversation_${activity.id}'),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: Colors.red.shade400,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: const Icon(
+            Icons.delete,
+            color: Colors.white,
+            size: 28,
+          ),
+        ),
+        confirmDismiss: (direction) async {
+          return await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Supprimer la conversation'),
+              content: Text(
+                'Voulez-vous supprimer la conversation "${activity.title}" de votre liste de messages ?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Annuler'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  child: const Text('Supprimer'),
+                ),
+              ],
+            ),
+          );
+        },
+        onDismissed: (direction) async {
+          try {
+            final user = ref.read(currentUserProvider);
+            if (user == null) return;
+            
+            final firestore = ref.read(firestoreProvider);
+            
+            // Add the activity ID to the user's hiddenConversations list
+            await firestore.collection('users').doc(user.uid).update({
+              'hiddenConversations': FieldValue.arrayUnion([activity.id]),
+            });
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Conversation masquée'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+          } catch (e) {
+            // Error handling
+          }
+        },
+        child: card,
+      );
+    }
+    
+    return card;
   }
 
   // Get relative time string
@@ -893,7 +1090,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             CircleAvatar(
               radius: 16,
               backgroundImage: message['senderPhotoUrl'] != null
-                  ? NetworkImage(message['senderPhotoUrl'])
+                  ? (message['senderPhotoUrl'].toString().startsWith('assets/')
+                      ? AssetImage(message['senderPhotoUrl'])
+                      : NetworkImage(message['senderPhotoUrl'])) as ImageProvider
                   : null,
               backgroundColor: AppColors.secondary.withOpacity(0.3),
               child: message['senderPhotoUrl'] == null

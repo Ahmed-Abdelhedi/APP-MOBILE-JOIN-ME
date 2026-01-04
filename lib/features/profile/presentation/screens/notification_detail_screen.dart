@@ -364,7 +364,9 @@ class NotificationDetailScreen extends ConsumerWidget {
                       
                       if (activityDoc.exists && context.mounted) {
                         final activityData = activityDoc.data() as Map<String, dynamic>;
-                        Navigator.push(
+                        // Add the document ID to the activity data
+                        activityData['id'] = activityId;
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => ActivityDetailsScreen(activity: activityData),

@@ -140,13 +140,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
       case 'sports':
-        return Colors.green;
+        return const Color(0xFF10B981); // Vibrant Green
       case 'gaming':
-        return Colors.purple;
+        return const Color(0xFF8B5CF6); // Vibrant Purple
       case 'nature':
-        return Colors.orange;
+        return const Color(0xFFF97316); // Vibrant Orange
       case 'fitness':
-        return Colors.pink;
+        return const Color(0xFFEC4899); // Vibrant Pink
+      case 'culture':
+        return const Color(0xFF06B6D4); // Vibrant Teal
+      case 'food':
+        return const Color(0xFFF97316); // Vibrant Orange
+      case 'music':
+        return const Color(0xFF3B82F6); // Vibrant Blue
       default:
         return AppColors.primary;
     }
@@ -164,6 +170,29 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         return Icons.self_improvement;
       default:
         return Icons.event;
+    }
+  }
+
+  Color _getFilterColor(String filter) {
+    switch (filter.toLowerCase()) {
+      case 'tous':
+        return const Color(0xFF3B82F6); // Vibrant Blue
+      case 'sports':
+        return const Color(0xFF10B981); // Vibrant Green
+      case 'gaming':
+        return const Color(0xFF8B5CF6); // Vibrant Purple
+      case 'nature':
+        return const Color(0xFFF97316); // Vibrant Orange
+      case 'fitness':
+        return const Color(0xFFEC4899); // Vibrant Pink
+      case 'culture':
+        return const Color(0xFF06B6D4); // Vibrant Teal
+      case 'food':
+        return const Color(0xFFF97316); // Vibrant Orange
+      case 'music':
+        return const Color(0xFF3B82F6); // Vibrant Blue
+      default:
+        return AppColors.primary;
     }
   }
 
@@ -290,7 +319,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       appBar: AppBar(
         title: Text(loc.map),
         elevation: 0,
-        backgroundColor: AppColors.primary,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF8B5CF6), Color(0xFF06B6D4)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         foregroundColor: Colors.white,
       ),
       body: activitiesAsync.when(
@@ -529,7 +566,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    Icon(Icons.search, color: Colors.grey[600]),
+                    const Icon(Icons.search, color: Color(0xFF8B5CF6)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
@@ -558,7 +595,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       )
                     else
                       IconButton(
-                        icon: Icon(Icons.search, color: AppColors.primary),
+                        icon: const Icon(Icons.search, color: Color(0xFF8B5CF6)),
                         onPressed: _searchLocation,
                       ),
                   ],
@@ -592,7 +629,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         });
                       },
                       backgroundColor: Colors.white,
-                      selectedColor: AppColors.primary,
+                      selectedColor: _getFilterColor(filter),
                       labelStyle: TextStyle(
                         color: isSelected ? Colors.white : Colors.black87,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -622,7 +659,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     )
                   : Icon(
                       Icons.my_location,
-                      color: _myPosition != null ? Colors.blue : AppColors.primary,
+                      color: _myPosition != null ? const Color(0xFF3B82F6) : const Color(0xFF8B5CF6),
                     ),
             ),
           ),
@@ -656,7 +693,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey[300],
+                        color: const Color(0xFF8B5CF6).withOpacity(0.5),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -687,11 +724,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
+                                color: Color(0xFF8B5CF6),
                               ),
                             ),
-                            Icon(
+                            const Icon(
                               Icons.keyboard_arrow_up,
-                              color: Colors.grey[600],
+                              color: Color(0xFF06B6D4),
                             ),
                           ],
                         ),

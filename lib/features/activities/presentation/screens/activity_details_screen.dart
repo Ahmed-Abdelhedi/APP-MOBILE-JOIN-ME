@@ -1562,7 +1562,11 @@ class _ActivityDetailsScreenState extends ConsumerState<ActivityDetailsScreen> {
                 child: CircleAvatar(
                   radius: 28,
                   backgroundColor: AppColors.primary.withOpacity(0.1),
-                  backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                  backgroundImage: photoUrl != null
+                      ? (photoUrl.startsWith('assets/')
+                          ? AssetImage(photoUrl)
+                          : NetworkImage(photoUrl)) as ImageProvider
+                      : null,
                   child: photoUrl == null
                       ? Text(initials, style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 20))
                       : null,
@@ -1738,7 +1742,11 @@ class _ActivityDetailsScreenState extends ConsumerState<ActivityDetailsScreen> {
                   child: CircleAvatar(
                     radius: 26,
                     backgroundColor: bgColor.withOpacity(0.1),
-                    backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                    backgroundImage: photoUrl != null
+                        ? (photoUrl.startsWith('assets/')
+                            ? AssetImage(photoUrl)
+                            : NetworkImage(photoUrl)) as ImageProvider
+                        : null,
                     child: photoUrl == null
                         ? Text(initials, style: TextStyle(color: bgColor, fontWeight: FontWeight.bold, fontSize: 16))
                         : null,
@@ -1822,7 +1830,11 @@ class _ActivityDetailsScreenState extends ConsumerState<ActivityDetailsScreen> {
               child: CircleAvatar(
                 radius: 50,
                 backgroundColor: bgColor.withOpacity(0.1),
-                backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                backgroundImage: photoUrl != null
+                    ? (photoUrl.startsWith('assets/')
+                        ? AssetImage(photoUrl)
+                        : NetworkImage(photoUrl)) as ImageProvider
+                    : null,
                 child: photoUrl == null
                     ? Text(
                         initials,

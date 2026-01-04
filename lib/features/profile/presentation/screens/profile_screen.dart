@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/core/constants/app_colors.dart';
-import 'package:mobile/core/services/activity_service.dart';
 import 'package:mobile/core/providers/firebase_providers.dart';
+import 'package:mobile/features/auth/presentation/providers/auth_providers.dart' show authControllerProvider;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../activities/presentation/screens/home_screen.dart';
 import '../../../map/presentation/screens/map_screen.dart';
@@ -112,7 +112,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       CircleAvatar(
                         radius: 50,
                         backgroundColor: Colors.white,
-                        backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                        backgroundImage: photoUrl != null
+                            ? (photoUrl.startsWith('assets/')
+                                ? AssetImage(photoUrl)
+                                : NetworkImage(photoUrl)) as ImageProvider
+                            : null,
                         child: photoUrl == null ? Text(
                           initials,
                           style: TextStyle(
@@ -323,6 +327,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       TextButton(
                         onPressed: () async {
+                          // Sign out from Firebase
+                          final authController = ref.read(authControllerProvider.notifier);
+                          await authController.signOut();
+                          
                           // Effacer les préférences utilisateur
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.clear();
