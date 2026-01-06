@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -63,6 +60,15 @@ class DefaultFirebaseOptions {
     messagingSenderId: '245116794298',
     projectId: 'join-me-mobile',
     iosBundleId: 'com.joinme.mobile',
+    storageBucket: 'join-me-mobile.firebasestorage.app',
+  );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyAw_Tv7A1DUxhg_9n-grPnodEDC7v6vWMc',
+    appId: '1:245116794298:web:joinme-web-app',
+    messagingSenderId: '245116794298',
+    projectId: 'join-me-mobile',
+    authDomain: 'join-me-mobile.firebaseapp.com',
     storageBucket: 'join-me-mobile.firebasestorage.app',
   );
 }
