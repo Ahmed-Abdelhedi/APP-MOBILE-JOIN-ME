@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:mobile/core/providers/firebase_providers.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:mobile/core/services/supabase_storage_service.dart';
 import 'dart:io';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -66,15 +67,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         // Use predefined avatar
         photoUrl = _selectedAvatarPath;
       } else if (_customImage != null) {
-        // Upload custom image to Firebase Storage
+        // Upload custom image - try Supabase first, then Firebase
         final userId = ref.read(currentUserProfileProvider).value?.uid;
         if (userId != null) {
-          final storageRef = FirebaseStorage.instance
-              .ref()
-              .child('profile_pictures')
-              .child('$userId.jpg');
-          await storageRef.putFile(_customImage!);
-          photoUrl = await storageRef.getDownloadURL();
+          photoUrl = await _uploadProfileImage(userId);
         }
       }
       
@@ -112,6 +108,36 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         setState(() => _isSaving = false);
       }
     }
+  }
+
+  /// Upload profile image - uses Supabase if available, otherwise Firebase
+  Future<String> _uploadProfileImage(String userId) async {
+    // Try Supabase first (if configured)
+    final supabaseService = SupabaseStorageService.instance;
+    if (supabaseService.isReady) {
+      try {
+        final url = await supabaseService.uploadProfileImage(
+          imageFile: _customImage!,
+          userId: userId,
+        );
+        // Clean up old profile images
+        await supabaseService.deleteOldProfileImages(userId);
+        print('✅ Profile image uploaded to Supabase: $url');
+        return url;
+      } catch (e) {
+        print('⚠️ Supabase upload failed, falling back to Firebase: $e');
+      }
+    }
+
+    // Fallback to Firebase Storage
+    final storageRef = FirebaseStorage.instance
+        .ref()
+        .child('profile_pictures')
+        .child('$userId.jpg');
+    await storageRef.putFile(_customImage!);
+    final url = await storageRef.getDownloadURL();
+    print('✅ Profile image uploaded to Firebase: $url');
+    return url;
   }
 
   void _showImagePickerOptions() {

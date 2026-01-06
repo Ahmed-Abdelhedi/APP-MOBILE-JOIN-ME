@@ -50,6 +50,9 @@ dependencies:
   http: ^1.2.2
   connectivity_plus: ^6.1.1
   
+  # Supabase (for image storage only)
+  supabase_flutter: ^2.8.4
+  
   # Permissions
   permission_handler: ^11.3.1
   

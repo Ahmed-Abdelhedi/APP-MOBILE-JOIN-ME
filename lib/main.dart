@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:mobile/core/theme/app_theme.dart';
 import 'package:mobile/core/providers/theme_provider.dart';
 import 'package:mobile/core/services/notification_service.dart';
+import 'package:mobile/core/services/supabase_storage_service.dart';
 import 'package:mobile/features/auth/presentation/screens/splash_screen.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
@@ -33,6 +34,15 @@ void main() async {
   final notificationService = NotificationService();
   await notificationService.initialize();
   print('✅ NotificationService initialisé dans main.dart');
+  
+  // Initialiser Supabase pour le stockage d'images (optionnel)
+  // Le reste de l'app utilise Firebase
+  try {
+    await SupabaseStorageService.instance.initialize();
+    print('✅ Supabase Storage initialisé');
+  } catch (e) {
+    print('⚠️ Supabase non configuré, utilisation de Firebase Storage: $e');
+  }
   
   // Configurer les notifications en arrière-plan
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);

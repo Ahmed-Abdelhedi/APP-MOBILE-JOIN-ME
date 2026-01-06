@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile/core/services/supabase_storage_service.dart';
 
 /// Service pour gérer les activités avec Firebase
 class ActivityService {
@@ -188,15 +189,38 @@ class ActivityService {
     });
   }
 
-  /// Upload an image to Firebase Storage and return the download URL
+  /// Upload an image and return the download URL
+  /// Uses Supabase Storage if configured, otherwise falls back to Firebase Storage
   /// Returns the download URL on success, throws an exception on failure
   Future<String> uploadActivityImage(File imageFile, String activityId) async {
-    try {
-      final userId = _auth.currentUser?.uid;
-      if (userId == null) {
-        throw Exception('Utilisateur non connecté');
-      }
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) {
+      throw Exception('Utilisateur non connecté');
+    }
 
+    // Try Supabase first (if configured)
+    final supabaseService = SupabaseStorageService.instance;
+    if (supabaseService.isReady) {
+      try {
+        final String downloadUrl = await supabaseService.uploadEventImage(
+          imageFile: imageFile,
+          activityId: activityId,
+          userId: userId,
+        );
+        print('✅ Image uploaded to Supabase: $downloadUrl');
+        return downloadUrl;
+      } catch (e) {
+        print('⚠️ Supabase upload failed, falling back to Firebase: $e');
+      }
+    }
+
+    // Fallback to Firebase Storage
+    return _uploadActivityImageToFirebase(imageFile, activityId, userId);
+  }
+
+  /// Upload image to Firebase Storage (fallback method)
+  Future<String> _uploadActivityImageToFirebase(File imageFile, String activityId, String userId) async {
+    try {
       // Create a unique filename using timestamp
       final String fileName = 'activity_${activityId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       
@@ -226,7 +250,7 @@ class ActivityService {
       // Get download URL
       final String downloadUrl = await snapshot.ref.getDownloadURL();
 
-      print('✅ Image uploaded successfully: $downloadUrl');
+      print('✅ Image uploaded to Firebase: $downloadUrl');
       return downloadUrl;
     } catch (e) {
       print('❌ Error uploading image: $e');
