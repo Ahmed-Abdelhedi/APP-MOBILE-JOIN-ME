@@ -41,24 +41,15 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# ⚠️ FICHIERS SENSIBLES - NE JAMAIS COMMITER EN PUBLIC
-# Ces fichiers contiennent des clés API et doivent rester privés
-android/app/google-services.json
-ios/Runner/GoogleService-Info.plist
-lib/firebase_options.dart
+# ⚠️ Fichiers sensibles (Déjà commités pour ce repo privé)
+# Note: google-services.json et firebase_options.dart sont commités
+# car ce repo est privé et personnel
 android/local.properties
 .env
-.env.*
 *.key
 *.keystore
 *.jks
-**/secrets/
-**/config/private/
-
-# APK build outputs
-*.apk
-*.aab
-JOINMEFINALVERSION.apk
 
 # Docker (cache only, keep config files)
 .docker/
+
