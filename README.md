@@ -35,8 +35,8 @@ Pour des raisons de sécurité, les fichiers suivants contenant des clés API **
 
 **Pour le professeur / évaluateur :** 
 Des fichiers d'exemple sont fournis pour comprendre la structure :
-- `google-services.json.example` - Structure du fichier Firebase
-- `firebase_options.dart.example` - Structure des options Firebase
+- `android/app/google-services.json.example` - Structure du fichier Firebase Android
+- `lib/firebase_options.dart.example` - Structure des options Firebase Flutter
 
 **Pour exécuter l'application, vous devez :**
 
@@ -256,35 +256,6 @@ L'application communique avec Firebase via les SDK officiels :
 
 ---
 
-## 🎓 Contexte Académique
-
-**Projet réalisé dans le cadre de :** [Nom du cours / Programme]  
-**Établissement :** [Nom de l'université/école]  
-**Période :** [Semestre/Année]  
-**Équipe :** [Vos noms]
-
-### Objectifs pédagogiques atteints
-- ✅ Développement d'une application mobile cross-platform avec Flutter
-- ✅ Intégration d'un backend cloud (Firebase)
-- ✅ Mise en œuvre de l'architecture Clean Architecture
-- ✅ Gestion d'état avec Riverpod
-- ✅ Authentification et sécurité des données
-- ✅ Temps réel et notifications push
-- ✅ Géolocalisation et cartographie
-
----
-
-## 📄 Licence
-
-Ce projet est réalisé à des fins éducatives.
-
----
-
-## 👨‍💻 Contact
-
-Pour toute question concernant ce projet :
-- 📧 Email : [votre.email@example.com]
-- 🔗 GitHub : [votre-username]
 
 ---
 
